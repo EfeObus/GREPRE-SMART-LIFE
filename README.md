@@ -127,8 +127,7 @@ grepre-smartlife/
 │   │   ├── auth.py         # Authentication
 │   │   ├── bills.py        # Bill management
 │   │   ├── documents.py    # Document management
-│   │   ├── health.py       # Health check endpoints
-│   │   └── ...
+│   │   └── health.py       # Health check endpoints
 │   ├── schemas/        # Pydantic schemas
 │   ├── services/       # Business logic services
 │   │   ├── email.py        # Email notifications
@@ -136,6 +135,7 @@ grepre-smartlife/
 │   │   └── bootstrap.py    # New user setup
 │   └── main.py         # FastAPI application
 ├── alembic/            # Database migrations
+├── database/           # SQL scripts and migration helpers
 ├── templates/          # Jinja2 HTML templates
 ├── static/
 │   ├── css/            # Stylesheets
