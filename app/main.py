@@ -56,9 +56,9 @@ app = FastAPI(
     description="Track your bills, store your documents, never miss a deadline",
     version="1.0.0",
     lifespan=lifespan,
-    docs_url="/api/docs" if settings.debug else None,
-    redoc_url="/api/redoc" if settings.debug else None,
-    openapi_url="/api/openapi.json" if settings.debug else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # Add middleware (order matters - last added is first executed)
@@ -80,18 +80,10 @@ app.add_middleware(
 # 4. Request logging (outermost - logs all requests)
 app.add_middleware(RequestLoggingMiddleware)
 
-# 5. CORS
-allowed_origins = (
-    ["*"]
-    if settings.debug
-    else [
-        f"http://localhost:{settings.web_port}",
-        f"https://localhost:{settings.web_port}",
-    ]
-)
+# 5. CORS - Allow all origins for API access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
