@@ -42,10 +42,18 @@ logger = logging.getLogger("grepre")
 async def lifespan(app: FastAPI):
     # Startup
     logger.info(f"Starting {settings.app_name}...")
-    await init_db()
+    
+    # Initialize database in background - don't block startup
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        logger.warning("Application starting without database - will retry on first request")
+    
     os.makedirs(settings.upload_dir, exist_ok=True)
     os.makedirs("static", exist_ok=True)
-    logger.info(f"Application started on port {settings.web_port}")
+    logger.info(f"Application started successfully")
     yield
     # Shutdown
     logger.info("Shutting down application...")
