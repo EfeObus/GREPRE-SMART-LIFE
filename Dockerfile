@@ -48,12 +48,12 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV APP_ENV=production
 
-# Expose port
-EXPOSE 5041
+# Expose port (Railway provides PORT env variable)
+EXPOSE ${PORT:-5041}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5041/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-5041}/health')" || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5041", "--workers", "4"]
+# Run the application - use PORT env variable for Railway compatibility
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-5041} --workers 4
