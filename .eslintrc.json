@@ -1,0 +1,18 @@
+{
+  "extends": ["expo", "prettier"],
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "off",
+    "@typescript-eslint/no-unused-vars": "off",
+    "import/order": "off",
+    "import/no-unresolved": "off",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {
+        "project": "./tsconfig.json"
+      }
+    }
+  }
+}

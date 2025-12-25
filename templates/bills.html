@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Bills - GrePre Smart Life{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo-icon">GP</span>
+            <span class="logo-text">GrePre</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li class="active"><a href="/bills">Bills</a></li>
+            <li><a href="/documents">Documents</a></li>
+            <li><a href="/settings">Settings</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="btn btn-outline btn-small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1>Bills</h1>
+            <button class="btn btn-primary" id="addBillBtn">+ Add Bill</button>
+        </header>
+
+        <div class="filters">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="pending">Pending</button>
+                <button class="filter-tab" data-filter="due_soon">Due Soon</button>
+                <button class="filter-tab" data-filter="overdue">Overdue</button>
+                <button class="filter-tab" data-filter="paid">Paid</button>
+            </div>
+        </div>
+
+        <div class="bills-list" id="billsList">
+            <p class="empty-state">Loading bills...</p>
+        </div>
+    </main>
+</div>
+
+<!-- Add Bill Modal -->
+<div class="modal" id="billModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Bill</h2>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <form id="billForm">
+            <input type="hidden" id="billId">
+            <div class="form-group">
+                <label for="billName">Bill Name</label>
+                <input type="text" id="billName" required placeholder="e.g., Electric Bill">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="billAmount">Amount</label>
+                    <input type="number" id="billAmount" step="0.01" min="0" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="billCategory">Category</label>
+                    <select id="billCategory">
+                        <option value="rent">Rent</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="subscriptions">Subscriptions</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="school_fees">School Fees</option>
+                        <option value="loans">Loans</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="billDueDate">Due Date</label>
+                    <input type="date" id="billDueDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="billFrequency">Frequency</label>
+                    <select id="billFrequency">
+                        <option value="once">Once</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="bi_weekly">Bi-Weekly</option>
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="bi_annually">Bi-Annually</option>
+                        <option value="annually">Annually</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="billNotes">Notes (optional)</label>
+                <textarea id="billNotes" rows="2" placeholder="Add any notes..."></textarea>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="billAutoPay">
+                <label for="billAutoPay">Auto-pay enabled</label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+let currentFilter = 'all';
+let allBills = [];
+
+async function fetchWithAuth(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options.headers 
+        }
+    });
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return null;
+    }
+    if (response.status === 204) return null;
+    return response.json();
+}
+
+async function loadBills() {
+    const bills = await fetchWithAuth('/api/bills');
+    if (bills) {
+        allBills = bills;
+        renderBills();
+    }
+}
+
+function renderBills() {
+    const container = document.getElementById('billsList');
+    let filtered = allBills;
+    
+    if (currentFilter !== 'all') {
+        filtered = allBills.filter(b => b.status === currentFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-state">No bills found</p>';
+        return;
+    }
+    
+    container.innerHTML = filtered.map(bill => {
+        const dueDate = new Date(bill.due_date);
+        const today = new Date();
+        const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+        let statusClass = '';
+        let statusText = '';
+        
+        if (bill.status === 'paid') {
+            statusClass = 'success';
+            statusText = 'Paid';
+        } else if (bill.status === 'overdue') {
+            statusClass = 'urgent';
+            statusText = `${Math.abs(daysUntil)} days overdue`;
+        } else if (bill.status === 'due_soon') {
+            statusClass = 'warning';
+            statusText = `Due in ${daysUntil} days`;
+        } else {
+            statusText = `Due ${dueDate.toLocaleDateString()}`;
+        }
+        
+        return `
+            <div class="bill-card ${statusClass}" data-id="${bill.id}">
+                <div class="bill-info">
+                    <div class="bill-header">
+                        <span class="bill-name">${bill.name}</span>
+                        <span class="bill-category">${bill.category}</span>
+                    </div>
+                    <span class="bill-due">${statusText}</span>
+                </div>
+                <div class="bill-actions">
+                    <span class="bill-amount">$${bill.amount.toFixed(2)}</span>
+                    <div class="action-buttons">
+                        ${bill.status !== 'paid' ? `<button class="btn btn-small btn-success pay-btn" data-id="${bill.id}">Pay</button>` : ''}
+                        <button class="btn btn-small edit-btn" data-id="${bill.id}">Edit</button>
+                        <button class="btn btn-small btn-danger delete-btn" data-id="${bill.id}">Delete</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Add event listeners
+    document.querySelectorAll('.pay-btn').forEach(btn => {
+        btn.addEventListener('click', () => payBill(btn.dataset.id));
+    });
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => editBill(btn.dataset.id));
+    });
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteBill(btn.dataset.id));
+    });
+}
+
+// Filter tabs
+document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
+        renderBills();
+    });
+});
+
+// Modal handlers
+const modal = document.getElementById('billModal');
+document.getElementById('addBillBtn').addEventListener('click', () => {
+    document.getElementById('modalTitle').textContent = 'Add Bill';
+    document.getElementById('billForm').reset();
+    document.getElementById('billId').value = '';
+    modal.classList.add('open');
+});
+
+document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('open'));
+document.getElementById('cancelBtn').addEventListener('click', () => modal.classList.remove('open'));
+
+document.getElementById('billForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const billId = document.getElementById('billId').value;
+    const data = {
+        name: document.getElementById('billName').value,
+        amount: parseFloat(document.getElementById('billAmount').value),
+        category: document.getElementById('billCategory').value,
+        due_date: document.getElementById('billDueDate').value,
+        frequency: document.getElementById('billFrequency').value,
+        notes: document.getElementById('billNotes').value,
+        is_auto_pay: document.getElementById('billAutoPay').checked
+    };
+    
+    try {
+        if (billId) {
+            await fetchWithAuth(`/api/bills/${billId}`, { method: 'PUT', body: JSON.stringify(data) });
+            Toast.success('Bill updated successfully!');
+        } else {
+            await fetchWithAuth('/api/bills', { method: 'POST', body: JSON.stringify(data) });
+            Toast.success('Bill created successfully!');
+        }
+        modal.classList.remove('open');
+        loadBills();
+    } catch (error) {
+        Toast.error('Failed to save bill. Please try again.');
+    }
+});
+
+async function editBill(id) {
+    const bill = allBills.find(b => b.id == id);
+    if (bill) {
+        document.getElementById('modalTitle').textContent = 'Edit Bill';
+        document.getElementById('billId').value = bill.id;
+        document.getElementById('billName').value = bill.name;
+        document.getElementById('billAmount').value = bill.amount;
+        document.getElementById('billCategory').value = bill.category;
+        document.getElementById('billDueDate').value = bill.due_date;
+        document.getElementById('billFrequency').value = bill.frequency;
+        document.getElementById('billNotes').value = bill.notes || '';
+        document.getElementById('billAutoPay').checked = bill.is_auto_pay;
+        modal.classList.add('open');
+    }
+}
+
+async function deleteBill(id) {
+    const bill = allBills.find(b => b.id == id);
+    const confirmed = await Confirm.show({
+        title: 'Delete Bill',
+        message: `Are you sure you want to delete "${bill?.name || 'this bill'}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        type: 'danger',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (confirmed) {
+        try {
+            await fetchWithAuth(`/api/bills/${id}`, { method: 'DELETE' });
+            Toast.success('Bill deleted successfully!');
+            loadBills();
+        } catch (error) {
+            Toast.error('Failed to delete bill. Please try again.');
+        }
+    }
+}
+
+async function payBill(id) {
+    const bill = allBills.find(b => b.id == id);
+    if (!bill) return;
+    
+    const confirmed = await Confirm.show({
+        title: 'Mark as Paid',
+        message: `Mark "${bill.name}" ($${bill.amount.toFixed(2)}) as paid?`,
+        confirmText: 'Mark Paid',
+        cancelText: 'Cancel',
+        type: 'info',
+        confirmClass: 'btn-success'
+    });
+    
+    if (confirmed) {
+        try {
+            await fetchWithAuth(`/api/bills/${id}/pay`, { 
+                method: 'POST',
+                body: JSON.stringify({
+                    bill_id: parseInt(id),
+                    amount: bill.amount,
+                    paid_date: new Date().toISOString().split('T')[0]
+                })
+            });
+            Toast.success(`Payment recorded for ${bill.name}!`);
+            loadBills();
+        } catch (error) {
+            Toast.error('Failed to record payment. Please try again.');
+        }
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+});
+
+loadBills();
+</script>
+{% endblock %}

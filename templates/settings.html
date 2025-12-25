@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - GrePre Smart Life{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo-icon">GP</span>
+            <span class="logo-text">GrePre</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/bills">Bills</a></li>
+            <li><a href="/documents">Documents</a></li>
+            <li class="active"><a href="/settings">Settings</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="btn btn-outline btn-small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1>Settings</h1>
+        </header>
+
+        <div class="settings-sections">
+            <section class="settings-section">
+                <h2>Profile</h2>
+                <form id="profileForm" class="settings-form">
+                    <div class="form-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" disabled>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </form>
+            </section>
+
+            <section class="settings-section">
+                <h2>Preferences</h2>
+                <form id="preferencesForm" class="settings-form">
+                    <div class="form-group">
+                        <label for="currency">Currency</label>
+                        <select id="currency">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                            <option value="CAD">CAD</option>
+                            <option value="AUD">AUD</option>
+                            <option value="NGN">NGN</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="theme">Theme</label>
+                        <select id="theme">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="notifications" checked>
+                        <label for="notifications">Enable Notifications</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Preferences</button>
+                </form>
+            </section>
+
+            <section class="settings-section">
+                <h2>Data Management</h2>
+                <div class="data-actions">
+                    <button class="btn btn-outline" id="exportDataBtn">Export All Data</button>
+                    <button class="btn btn-danger" id="deleteAccountBtn">Delete Account</button>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+async function fetchWithAuth(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            ...options.headers 
+        }
+    });
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return null;
+    }
+    return response.json();
+}
+
+async function loadUserSettings() {
+    const user = await fetchWithAuth('/api/auth/me');
+    if (user) {
+        document.getElementById('fullName').value = user.full_name;
+        document.getElementById('email').value = user.email;
+        document.getElementById('currency').value = user.currency;
+        document.getElementById('theme').value = user.theme;
+        document.getElementById('notifications').checked = user.notifications_enabled;
+    }
+}
+
+document.getElementById('profileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('fullName').value;
+    try {
+        await fetchWithAuth('/api/auth/profile', {
+            method: 'PUT',
+            body: JSON.stringify({ full_name: fullName })
+        });
+        Toast.success('Profile updated successfully!');
+    } catch (error) {
+        Toast.error('Failed to update profile. Please try again.');
+    }
+});
+
+document.getElementById('preferencesForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const currency = document.getElementById('currency').value;
+    const theme = document.getElementById('theme').value;
+    const notifications = document.getElementById('notifications').checked;
+    
+    try {
+        await fetchWithAuth('/api/auth/preferences', {
+            method: 'PUT',
+            body: JSON.stringify({ 
+                currency, 
+                theme, 
+                notifications_enabled: notifications 
+            })
+        });
+        localStorage.setItem('theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+        Toast.success('Preferences saved successfully!');
+    } catch (error) {
+        Toast.error('Failed to save preferences. Please try again.');
+    }
+});
+
+document.getElementById('exportDataBtn').addEventListener('click', async () => {
+    Toast.info('Preparing your data export...');
+    try {
+        const bills = await fetchWithAuth('/api/bills');
+        const docs = await fetchWithAuth('/api/documents');
+        
+        const exportData = {
+            exported_at: new Date().toISOString(),
+            bills: bills,
+            documents: docs
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `grepre_export_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        Toast.success('Data exported successfully! Check your downloads.');
+    } catch (error) {
+        Toast.error('Failed to export data. Please try again.');
+    }
+});
+
+document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+    const confirmed = await Confirm.show({
+        title: 'Delete Account',
+        message: 'This will permanently delete your account and all associated data. This action cannot be undone.',
+        confirmText: 'Delete Account',
+        cancelText: 'Keep Account',
+        type: 'danger',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (confirmed) {
+        try {
+            await fetchWithAuth('/api/auth/account', { method: 'DELETE' });
+            Toast.success('Account deleted. Goodbye!');
+            setTimeout(() => {
+                localStorage.removeItem('token');
+                window.location.href = '/';
+            }, 2000);
+        } catch (error) {
+            Toast.error('Failed to delete account. Please contact support.');
+        }
+    }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+});
+
+loadUserSettings();
+</script>
+{% endblock %}

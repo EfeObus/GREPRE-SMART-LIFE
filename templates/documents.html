@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Documents - GrePre Smart Life{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo-icon">GP</span>
+            <span class="logo-text">GrePre</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/bills">Bills</a></li>
+            <li class="active"><a href="/documents">Documents</a></li>
+            <li><a href="/settings">Settings</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="btn btn-outline btn-small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1>Documents</h1>
+            <button class="btn btn-primary" id="addDocBtn">+ Add Document</button>
+        </header>
+
+        <div class="filters">
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="id">ID</button>
+                <button class="filter-tab" data-filter="visa">Visa</button>
+                <button class="filter-tab" data-filter="passport">Passport</button>
+                <button class="filter-tab" data-filter="license">License</button>
+                <button class="filter-tab" data-filter="insurance">Insurance</button>
+                <button class="filter-tab" data-filter="other">Other</button>
+            </div>
+        </div>
+
+        <div class="documents-list" id="documentsList">
+            <p class="empty-state">Loading documents...</p>
+        </div>
+    </main>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal" id="docModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Document</h2>
+            <button class="modal-close" id="closeModal">&times;</button>
+        </div>
+        <form id="docForm" enctype="multipart/form-data">
+            <input type="hidden" id="docId">
+            <div class="form-group">
+                <label for="docName">Document Name</label>
+                <input type="text" id="docName" required placeholder="e.g., Driver's License">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="docCategory">Category</label>
+                    <select id="docCategory">
+                        <option value="id">ID</option>
+                        <option value="visa">Visa</option>
+                        <option value="passport">Passport</option>
+                        <option value="permit">Permit</option>
+                        <option value="license">License</option>
+                        <option value="warranty">Warranty</option>
+                        <option value="insurance">Insurance</option>
+                        <option value="certificate">Certificate</option>
+                        <option value="contract">Contract</option>
+                        <option value="receipt">Receipt</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="docExpiry">Expiry Date (optional)</label>
+                    <input type="date" id="docExpiry">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="docFile">Upload File (optional)</label>
+                <input type="file" id="docFile" accept="image/*,.pdf">
+            </div>
+            <div class="form-group">
+                <label for="docTags">Tags (comma-separated)</label>
+                <input type="text" id="docTags" placeholder="e.g., personal, important">
+            </div>
+            <div class="form-group">
+                <label for="docNotes">Notes (optional)</label>
+                <textarea id="docNotes" rows="2" placeholder="Add any notes..."></textarea>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="docProtected">
+                <label for="docProtected">Protect with biometric/password</label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" id="cancelBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Document</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
+
+let currentFilter = 'all';
+let allDocuments = [];
+
+async function fetchWithAuth(url, options = {}) {
+    const headers = { 'Authorization': `Bearer ${token}` };
+    if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+    const response = await fetch(url, {
+        ...options,
+        headers: { ...headers, ...options.headers }
+    });
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return null;
+    }
+    if (response.status === 204) return null;
+    return response.json();
+}
+
+async function loadDocuments() {
+    const docs = await fetchWithAuth('/api/documents');
+    if (docs) {
+        allDocuments = docs;
+        renderDocuments();
+    }
+}
+
+function renderDocuments() {
+    const container = document.getElementById('documentsList');
+    let filtered = allDocuments;
+    
+    if (currentFilter !== 'all') {
+        filtered = allDocuments.filter(d => d.category === currentFilter);
+    }
+    
+    if (filtered.length === 0) {
+        container.innerHTML = '<p class="empty-state">No documents found</p>';
+        return;
+    }
+    
+    container.innerHTML = filtered.map(doc => {
+        let expiryInfo = '';
+        let expiryClass = '';
+        
+        if (doc.expiry_date) {
+            const expiry = new Date(doc.expiry_date);
+            const today = new Date();
+            const daysUntil = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+            
+            if (daysUntil < 0) {
+                expiryClass = 'urgent';
+                expiryInfo = `Expired ${Math.abs(daysUntil)} days ago`;
+            } else if (daysUntil <= 30) {
+                expiryClass = 'warning';
+                expiryInfo = `Expires in ${daysUntil} days`;
+            } else {
+                expiryInfo = `Expires ${expiry.toLocaleDateString()}`;
+            }
+        }
+        
+        return `
+            <div class="doc-card ${expiryClass}" data-id="${doc.id}">
+                <div class="doc-icon">${doc.category.charAt(0).toUpperCase()}</div>
+                <div class="doc-info">
+                    <span class="doc-name">${doc.name}</span>
+                    <span class="doc-category">${doc.category}</span>
+                    ${expiryInfo ? `<span class="doc-expiry">${expiryInfo}</span>` : ''}
+                    ${doc.tags ? `<span class="doc-tags">${doc.tags}</span>` : ''}
+                </div>
+                <div class="doc-actions">
+                    ${doc.is_protected ? '<span class="protected-badge">Protected</span>' : ''}
+                    <button class="btn btn-small edit-btn" data-id="${doc.id}">Edit</button>
+                    <button class="btn btn-small btn-danger delete-btn" data-id="${doc.id}">Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => editDocument(btn.dataset.id));
+    });
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', () => deleteDocument(btn.dataset.id));
+    });
+}
+
+// Filter tabs
+document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
+        renderDocuments();
+    });
+});
+
+// Modal handlers
+const modal = document.getElementById('docModal');
+document.getElementById('addDocBtn').addEventListener('click', () => {
+    document.getElementById('modalTitle').textContent = 'Add Document';
+    document.getElementById('docForm').reset();
+    document.getElementById('docId').value = '';
+    modal.classList.add('open');
+});
+
+document.getElementById('closeModal').addEventListener('click', () => modal.classList.remove('open'));
+document.getElementById('cancelBtn').addEventListener('click', () => modal.classList.remove('open'));
+
+document.getElementById('docForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const docId = document.getElementById('docId').value;
+    
+    const formData = new FormData();
+    formData.append('name', document.getElementById('docName').value);
+    formData.append('category', document.getElementById('docCategory').value);
+    formData.append('is_protected', document.getElementById('docProtected').checked);
+    
+    const expiry = document.getElementById('docExpiry').value;
+    if (expiry) formData.append('expiry_date', expiry);
+    
+    const notes = document.getElementById('docNotes').value;
+    if (notes) formData.append('notes', notes);
+    
+    const tags = document.getElementById('docTags').value;
+    if (tags) formData.append('tags', tags);
+    
+    const fileInput = document.getElementById('docFile');
+    if (fileInput.files[0]) {
+        formData.append('file', fileInput.files[0]);
+    }
+    
+    try {
+        if (docId) {
+            // For updates, use JSON
+            const data = {
+                name: document.getElementById('docName').value,
+                category: document.getElementById('docCategory').value,
+                expiry_date: expiry || null,
+                is_protected: document.getElementById('docProtected').checked,
+                notes: notes || null,
+                tags: tags || null
+            };
+            await fetchWithAuth(`/api/documents/${docId}`, { 
+                method: 'PUT', 
+                body: JSON.stringify(data)
+            });
+            Toast.success('Document updated successfully!');
+        } else {
+            const response = await fetch('/api/documents', { 
+                method: 'POST', 
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData 
+            });
+            if (!response.ok) throw new Error('Upload failed');
+            Toast.success('Document uploaded successfully!');
+        }
+        modal.classList.remove('open');
+        loadDocuments();
+    } catch (error) {
+        Toast.error('Failed to save document. Please try again.');
+    }
+});
+
+async function editDocument(id) {
+    const doc = allDocuments.find(d => d.id == id);
+    if (doc) {
+        document.getElementById('modalTitle').textContent = 'Edit Document';
+        document.getElementById('docId').value = doc.id;
+        document.getElementById('docName').value = doc.name;
+        document.getElementById('docCategory').value = doc.category;
+        document.getElementById('docExpiry').value = doc.expiry_date || '';
+        document.getElementById('docNotes').value = doc.notes || '';
+        document.getElementById('docTags').value = doc.tags || '';
+        document.getElementById('docProtected').checked = doc.is_protected;
+        modal.classList.add('open');
+    }
+}
+
+async function deleteDocument(id) {
+    const doc = allDocuments.find(d => d.id == id);
+    const confirmed = await Confirm.show({
+        title: 'Delete Document',
+        message: `Are you sure you want to delete "${doc?.name || 'this document'}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        type: 'danger',
+        confirmClass: 'btn-danger'
+    });
+    
+    if (confirmed) {
+        try {
+            await fetchWithAuth(`/api/documents/${id}`, { method: 'DELETE' });
+            Toast.success('Document deleted successfully!');
+            loadDocuments();
+        } catch (error) {
+            Toast.error('Failed to delete document. Please try again.');
+        }
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+});
+
+loadDocuments();
+</script>
+{% endblock %}

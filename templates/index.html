@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}GrePre Smart Life - Manage Your Bills & Documents{% endblock %}
+
+{% block content %}
+<div class="landing-page">
+    <nav class="landing-nav">
+        <div class="logo">
+            <span class="logo-icon">GP</span>
+            <span class="logo-text">GrePre Smart Life</span>
+        </div>
+        <div class="nav-links">
+            <a href="/login" class="btn btn-outline">Login</a>
+            <a href="/register" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-content">
+            <h1>Bills, Documents & Deadlines<br><span class="highlight">All in One Place</span></h1>
+            <p class="hero-subtitle">
+                Never miss a payment or let an important document expire. 
+                GrePre Smart Life helps you stay organized and stress-free.
+            </p>
+            <div class="hero-buttons">
+                <a href="/register" class="btn btn-primary btn-large">Start Free</a>
+                <a href="#features" class="btn btn-outline btn-large">Learn More</a>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="dashboard-preview">
+                <div class="preview-header">
+                    <div class="preview-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="preview-content">
+                    <div class="preview-stat">
+                        <span class="stat-value">$2,450</span>
+                        <span class="stat-label">Monthly Bills</span>
+                    </div>
+                    <div class="preview-cards">
+                        <div class="mini-card urgent">Rent Due in 3 days</div>
+                        <div class="mini-card warning">Insurance expires soon</div>
+                        <div class="mini-card success">Electric bill paid</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="features" class="features">
+        <h2>Everything You Need</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">$</div>
+                <h3>Bill Tracking</h3>
+                <p>Track all your bills in one place. Set reminders and never miss a payment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">D</div>
+                <h3>Document Storage</h3>
+                <p>Store important documents securely. Access them anytime, anywhere.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">!</div>
+                <h3>Smart Reminders</h3>
+                <p>Get notified before due dates with escalating reminder system.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">B</div>
+                <h3>Data Backup</h3>
+                <p>Export your data anytime. Your information, your control.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <h2>Ready to Get Organized?</h2>
+        <p>Join thousands of users who have simplified their financial life.</p>
+        <a href="/register" class="btn btn-primary btn-large">Create Free Account</a>
+    </section>
+
+    <footer class="landing-footer">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <span class="logo-icon">GP</span>
+                <span>GrePre Smart Life</span>
+            </div>
+            <div class="footer-links">
+                <a href="#">Privacy</a>
+                <a href="#">Terms</a>
+                <a href="#">Contact</a>
+            </div>
+            <p class="footer-copyright">Made by Efe Obukohwo</p>
+        </div>
+    </footer>
+</div>
+{% endblock %}

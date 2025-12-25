@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - GrePre Smart Life{% endblock %}
+
+{% block content %}
+<div class="app-layout">
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <span class="logo-icon">GP</span>
+            <span class="logo-text">GrePre</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li class="active"><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/bills">Bills</a></li>
+            <li><a href="/documents">Documents</a></li>
+            <li><a href="/settings">Settings</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="logoutBtn" class="btn btn-outline btn-small">Logout</button>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header class="page-header">
+            <h1>Dashboard</h1>
+            <p id="welcomeMsg">Welcome back!</p>
+        </header>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <span class="stat-value" id="monthlyTotal">$0</span>
+                <span class="stat-label">Monthly Bills</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="pendingBills">0</span>
+                <span class="stat-label">Pending Bills</span>
+            </div>
+            <div class="stat-card warning">
+                <span class="stat-value" id="overdueBills">0</span>
+                <span class="stat-label">Overdue</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-value" id="totalDocs">0</span>
+                <span class="stat-label">Documents</span>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2>Upcoming Bills</h2>
+                    <a href="/bills" class="btn btn-small">View All</a>
+                </div>
+                <div class="card-list" id="upcomingBills">
+                    <p class="empty-state">No upcoming bills</p>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2>Overdue Bills</h2>
+                </div>
+                <div class="card-list" id="overdueBillsList">
+                    <p class="empty-state">No overdue bills</p>
+                </div>
+            </section>
+
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h2>Expiring Documents</h2>
+                    <a href="/documents" class="btn btn-small">View All</a>
+                </div>
+                <div class="card-list" id="expiringDocs">
+                    <p class="empty-state">No expiring documents</p>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+const token = localStorage.getItem('token');
+if (!token) {
+    window.location.href = '/login';
+}
+
+async function fetchWithAuth(url) {
+    const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return null;
+    }
+    return response.json();
+}
+
+async function loadDashboard() {
+    try {
+        // Load user info
+        const user = await fetchWithAuth('/api/auth/me');
+        if (user) {
+            document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.full_name}!`;
+        }
+
+        // Load stats
+        const stats = await fetchWithAuth('/api/dashboard/stats');
+        if (stats) {
+            document.getElementById('monthlyTotal').textContent = `$${stats.monthly_total.toFixed(2)}`;
+            document.getElementById('pendingBills').textContent = stats.pending_bills + stats.due_soon_bills;
+            document.getElementById('overdueBills').textContent = stats.overdue_bills;
+            document.getElementById('totalDocs').textContent = stats.total_documents;
+        }
+
+        // Load upcoming bills
+        const upcoming = await fetchWithAuth('/api/dashboard/upcoming-bills');
+        const upcomingContainer = document.getElementById('upcomingBills');
+        if (upcoming && upcoming.length > 0) {
+            upcomingContainer.innerHTML = upcoming.map(bill => `
+                <div class="list-item">
+                    <div class="item-info">
+                        <span class="item-name">${bill.name}</span>
+                        <span class="item-meta">Due in ${bill.days_until_due} days</span>
+                    </div>
+                    <span class="item-amount">$${bill.amount.toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Load overdue bills
+        const overdue = await fetchWithAuth('/api/dashboard/overdue-bills');
+        const overdueContainer = document.getElementById('overdueBillsList');
+        if (overdue && overdue.length > 0) {
+            overdueContainer.innerHTML = overdue.map(bill => `
+                <div class="list-item urgent">
+                    <div class="item-info">
+                        <span class="item-name">${bill.name}</span>
+                        <span class="item-meta">${Math.abs(bill.days_until_due)} days overdue</span>
+                    </div>
+                    <span class="item-amount">$${bill.amount.toFixed(2)}</span>
+                </div>
+            `).join('');
+        }
+
+        // Load expiring documents
+        const expiring = await fetchWithAuth('/api/dashboard/expiring-documents');
+        const expiringContainer = document.getElementById('expiringDocs');
+        if (expiring && expiring.length > 0) {
+            expiringContainer.innerHTML = expiring.map(doc => `
+                <div class="list-item warning">
+                    <div class="item-info">
+                        <span class="item-name">${doc.name}</span>
+                        <span class="item-meta">Expires in ${doc.days_until_expiry} days</span>
+                    </div>
+                    <span class="item-badge">${doc.category}</span>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+});
+
+loadDashboard();
+</script>
+{% endblock %}
