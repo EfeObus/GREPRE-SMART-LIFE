@@ -2,10 +2,11 @@
 GrePre Smart Life - Pagination Utilities
 Standardized pagination for list endpoints
 """
-from typing import TypeVar, Generic, List, Optional
-from pydantic import BaseModel, Field
+from typing import Generic, List, Optional, TypeVar
+
 from fastapi import Query
-from sqlalchemy import select, func
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 T = TypeVar("T")
@@ -16,12 +17,13 @@ class PaginationParams:
     Dependency for extracting pagination parameters from query string.
     Usage: pagination: PaginationParams = Depends()
     """
+
     def __init__(
         self,
         page: int = Query(1, ge=1, description="Page number"),
         page_size: int = Query(20, ge=1, le=100, description="Items per page"),
         sort_by: Optional[str] = Query(None, description="Field to sort by"),
-        sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order")
+        sort_order: str = Query("asc", regex="^(asc|desc)$", description="Sort order"),
     ):
         self.page = page
         self.page_size = page_size
@@ -34,6 +36,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     """
     Standard paginated response wrapper.
     """
+
     items: List[T]
     total: int
     page: int
@@ -41,22 +44,19 @@ class PaginatedResponse(BaseModel, Generic[T]):
     total_pages: int
     has_next: bool
     has_prev: bool
-    
+
     class Config:
         from_attributes = True
 
 
 def create_paginated_response(
-    items: List[T],
-    total: int,
-    page: int,
-    page_size: int
+    items: List[T], total: int, page: int, page_size: int
 ) -> dict:
     """
     Create a paginated response dictionary.
     """
     total_pages = (total + page_size - 1) // page_size if page_size > 0 else 0
-    
+
     return {
         "items": items,
         "total": total,
@@ -64,16 +64,12 @@ def create_paginated_response(
         "page_size": page_size,
         "total_pages": total_pages,
         "has_next": page < total_pages,
-        "has_prev": page > 1
+        "has_prev": page > 1,
     }
 
 
 async def paginate_query(
-    query,
-    db: AsyncSession,
-    pagination: PaginationParams,
-    model=None,
-    sort_field=None
+    query, db: AsyncSession, pagination: PaginationParams, model=None, sort_field=None
 ) -> dict:
     """
     Apply pagination to a SQLAlchemy query.
@@ -83,26 +79,23 @@ async def paginate_query(
     count_query = select(func.count()).select_from(query.subquery())
     result = await db.execute(count_query)
     total = result.scalar() or 0
-    
+
     # Apply sorting if specified
     if sort_field is not None:
         if pagination.sort_order == "desc":
             query = query.order_by(sort_field.desc())
         else:
             query = query.order_by(sort_field.asc())
-    
+
     # Apply pagination
     query = query.offset(pagination.skip).limit(pagination.page_size)
-    
+
     # Execute query
     result = await db.execute(query)
     items = result.scalars().all()
-    
+
     return create_paginated_response(
-        items=items,
-        total=total,
-        page=pagination.page,
-        page_size=pagination.page_size
+        items=items, total=total, page=pagination.page, page_size=pagination.page_size
     )
 
 
@@ -111,20 +104,17 @@ class CursorPaginationParams:
     Cursor-based pagination for large datasets.
     More efficient than offset pagination for large tables.
     """
+
     def __init__(
         self,
         cursor: Optional[int] = Query(None, description="Cursor (last item ID)"),
-        limit: int = Query(20, ge=1, le=100, description="Items to return")
+        limit: int = Query(20, ge=1, le=100, description="Items to return"),
     ):
         self.cursor = cursor
         self.limit = limit
 
 
-def create_cursor_response(
-    items: List[T],
-    limit: int,
-    id_field: str = "id"
-) -> dict:
+def create_cursor_response(items: List[T], limit: int, id_field: str = "id") -> dict:
     """
     Create cursor-based paginated response.
     """
@@ -132,9 +122,5 @@ def create_cursor_response(
     if items and len(items) == limit:
         last_item = items[-1]
         next_cursor = getattr(last_item, id_field, None)
-    
-    return {
-        "items": items,
-        "next_cursor": next_cursor,
-        "has_more": len(items) == limit
-    }
+
+    return {"items": items, "next_cursor": next_cursor, "has_more": len(items) == limit}

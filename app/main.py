@@ -3,29 +3,28 @@ GrePre Smart Life - Main Application
 Production-ready with security middleware, rate limiting, and logging
 """
 import logging
+import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.core.middleware import (
-    RateLimitMiddleware,
-    SecurityHeadersMiddleware,
-    RequestLoggingMiddleware,
-    CompressionMiddleware
-)
-from app.routes import auth_router, bills_router, documents_router, dashboard_router, health_router
+from app.core.middleware import (CompressionMiddleware, RateLimitMiddleware,
+                                 RequestLoggingMiddleware,
+                                 SecurityHeadersMiddleware)
+from app.routes import (auth_router, bills_router, dashboard_router,
+                        documents_router, health_router)
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO if not settings.debug else logging.DEBUG,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("grepre")
 
@@ -50,7 +49,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/api/docs" if settings.debug else None,
     redoc_url="/api/redoc" if settings.debug else None,
-    openapi_url="/api/openapi.json" if settings.debug else None
+    openapi_url="/api/openapi.json" if settings.debug else None,
 )
 
 # Add middleware (order matters - last added is first executed)
@@ -66,17 +65,21 @@ app.add_middleware(
     default_limit=100,  # 100 requests per minute for API
     default_window=60,
     auth_limit=5,  # 5 login attempts per minute
-    auth_window=60
+    auth_window=60,
 )
 
 # 4. Request logging (outermost - logs all requests)
 app.add_middleware(RequestLoggingMiddleware)
 
 # 5. CORS
-allowed_origins = ["*"] if settings.debug else [
-    f"http://localhost:{settings.web_port}",
-    f"https://localhost:{settings.web_port}"
-]
+allowed_origins = (
+    ["*"]
+    if settings.debug
+    else [
+        f"http://localhost:{settings.web_port}",
+        f"https://localhost:{settings.web_port}",
+    ]
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

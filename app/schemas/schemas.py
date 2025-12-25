@@ -1,10 +1,13 @@
 """
 GrePre Smart Life - Pydantic Schemas
 """
-from datetime import datetime, date
-from typing import Optional, List
+from datetime import date, datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, EmailStr, Field
-from app.models.models import BillCategory, BillFrequency, BillStatus, DocumentCategory, SubscriptionTier
+
+from app.models.models import (BillCategory, BillFrequency, BillStatus,
+                               DocumentCategory, SubscriptionTier)
 
 
 # User Schemas
@@ -47,6 +50,7 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     """Token response with access and refresh tokens."""
+
     access_token: str
     refresh_token: Optional[str] = None
     token_type: str = "bearer"
@@ -55,6 +59,7 @@ class Token(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     """Request body for token refresh."""
+
     refresh_token: str
 
 
@@ -221,6 +226,7 @@ BillWithPayments.model_rebuild()
 # Subscription Tier Schemas
 class TierInfo(BaseModel):
     """Information about a subscription tier"""
+
     tier: SubscriptionTier
     max_bills: Optional[int] = None
     max_documents: Optional[int] = None
@@ -231,6 +237,7 @@ class TierInfo(BaseModel):
 
 class TierUsage(BaseModel):
     """Current usage against tier limits"""
+
     subscription_tier: SubscriptionTier
     bills_used: int
     bills_limit: Optional[int] = None
@@ -245,17 +252,20 @@ class TierUsage(BaseModel):
 
 class TierUpgradeRequest(BaseModel):
     """Request to upgrade subscription tier"""
+
     target_tier: SubscriptionTier
 
 
 class OrganizationCreate(BaseModel):
     """Create a new organization"""
+
     name: str = Field(..., min_length=2, max_length=255)
     max_users: int = Field(default=10, ge=1, le=1000)
 
 
 class OrganizationResponse(BaseModel):
     """Organization response"""
+
     id: int
     name: str
     slug: str
@@ -272,4 +282,5 @@ class OrganizationResponse(BaseModel):
 
 class OrganizationInvite(BaseModel):
     """Invite a user to organization"""
+
     email: EmailStr

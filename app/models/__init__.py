@@ -1,14 +1,4 @@
-from app.models.models import (
-    User,
-    Bill,
-    Payment,
-    Document,
-    BillDocumentLink,
-    Organization,
-    BillCategory,
-    BillFrequency,
-    BillStatus,
-    DocumentCategory,
-    SubscriptionTier,
-    TIER_LIMITS
-)
+from app.models.models import (TIER_LIMITS, Bill, BillCategory,
+                               BillDocumentLink, BillFrequency, BillStatus,
+                               Document, DocumentCategory, Organization,
+                               Payment, SubscriptionTier, User)

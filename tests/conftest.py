@@ -4,13 +4,14 @@ GrePre Smart Life - Test Configuration and Fixtures
 
 import asyncio
 import os
-from typing import AsyncGenerator, Generator
 from datetime import datetime
+from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
+                                    create_async_engine)
 from sqlalchemy.pool import StaticPool
 
 # Set test environment before importing app
@@ -19,11 +20,10 @@ os.environ["DEBUG"] = "false"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_only"
 os.environ["JWT_SECRET"] = "test_jwt_secret_for_testing_only"
 
-from app.main import app
 from app.core.database import Base, get_db
-from app.models import User, Bill, Document, Reminder, Category
-from app.core.security import get_password_hash, create_access_token
-
+from app.core.security import create_access_token, get_password_hash
+from app.main import app
+from app.models import Bill, Category, Document, Reminder, User
 
 # Test database URL (in-memory SQLite for fast tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -46,15 +46,15 @@ async def async_engine():
         poolclass=StaticPool,
         echo=False,
     )
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield engine
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -68,7 +68,7 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
         autocommit=False,
         autoflush=False,
     )
-    
+
     async with async_session_maker() as session:
         yield session
 
@@ -83,17 +83,17 @@ async def client(async_engine) -> AsyncGenerator[AsyncClient, None]:
         autocommit=False,
         autoflush=False,
     )
-    
+
     async def override_get_db():
         async with async_session_maker() as session:
             yield session
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-    
+
     app.dependency_overrides.clear()
 
 
@@ -166,7 +166,7 @@ async def test_bill(
 # Test data factories
 class TestDataFactory:
     """Factory for creating test data."""
-    
+
     @staticmethod
     def user_data(
         email: str = "newuser@example.com",
@@ -180,7 +180,7 @@ class TestDataFactory:
             "first_name": first_name,
             "last_name": last_name,
         }
-    
+
     @staticmethod
     def bill_data(
         name: str = "New Bill",
@@ -194,7 +194,7 @@ class TestDataFactory:
             "category_id": category_id,
             "is_recurring": False,
         }
-    
+
     @staticmethod
     def category_data(
         name: str = "New Category",

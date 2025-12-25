@@ -1,3 +1,4 @@
-from app.core.config import settings, get_settings
-from app.core.database import get_db, init_db, Base, engine
-from app.core.security import verify_password, get_password_hash, create_access_token, decode_token
+from app.core.config import get_settings, settings
+from app.core.database import Base, engine, get_db, init_db
+from app.core.security import (create_access_token, decode_token,
+                               get_password_hash, verify_password)

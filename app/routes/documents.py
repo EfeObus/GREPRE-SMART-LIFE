@@ -2,67 +2,75 @@
 GrePre Smart Life - Document Routes
 With strict ownership enforcement, soft deletes, file metadata, tier limits, and transaction safety
 """
+import hashlib
 import os
 import uuid
-import hashlib
 from datetime import date, datetime, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+
 import aiofiles
-from app.core.database import get_db
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
+                     UploadFile, status)
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.exceptions import ErrorCode
-from app.models import Document, User, DocumentCategory
-from app.schemas import DocumentCreate, DocumentUpdate, DocumentResponse
+from app.models import Document, DocumentCategory, User
 from app.routes.auth import get_current_user
-from app.services.tier import enforce_document_limit, TierLimitExceededError
+from app.schemas import DocumentCreate, DocumentResponse, DocumentUpdate
+from app.services.tier import TierLimitExceededError, enforce_document_limit
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 # Allowed file types and max file size
 ALLOWED_MIME_TYPES = {
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-    'application/pdf',
-    'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain'
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
 }
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 async def get_user_document(
-    document_id: int,
-    user_id: int,
-    db: AsyncSession,
-    include_deleted: bool = False
+    document_id: int, user_id: int, db: AsyncSession, include_deleted: bool = False
 ) -> Document:
     """
     Get a document with strict ownership check.
     Raises appropriate errors if not found or access denied.
     """
     query = select(Document).where(Document.id == document_id)
-    
+
     if not include_deleted:
         query = query.where(Document.is_deleted == False)
-    
+
     result = await db.execute(query)
     document = result.scalar_one_or_none()
-    
+
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": ErrorCode.DOC_NOT_FOUND, "message": "Document not found"}
+            detail={"code": ErrorCode.DOC_NOT_FOUND, "message": "Document not found"},
         )
-    
+
     # Strict ownership check
     if document.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": ErrorCode.DOC_ACCESS_DENIED, "message": "You do not have access to this document"}
+            detail={
+                "code": ErrorCode.DOC_ACCESS_DENIED,
+                "message": "You do not have access to this document",
+            },
         )
-    
+
     return document
 
 
@@ -77,21 +85,27 @@ async def validate_file(file: UploadFile) -> tuple[bytes, str]:
     Returns file content and checksum.
     """
     content = await file.read()
-    
+
     # Check file size
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": ErrorCode.DOC_FILE_TOO_LARGE, "message": f"File size exceeds {MAX_FILE_SIZE // (1024*1024)}MB limit"}
+            detail={
+                "code": ErrorCode.DOC_FILE_TOO_LARGE,
+                "message": f"File size exceeds {MAX_FILE_SIZE // (1024*1024)}MB limit",
+            },
         )
-    
+
     # Check MIME type
     if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": ErrorCode.DOC_INVALID_TYPE, "message": f"File type '{file.content_type}' is not allowed"}
+            detail={
+                "code": ErrorCode.DOC_INVALID_TYPE,
+                "message": f"File type '{file.content_type}' is not allowed",
+            },
         )
-    
+
     checksum = calculate_file_checksum(content)
     return content, checksum
 
@@ -103,7 +117,7 @@ async def get_documents(
     expiring_soon: bool = False,
     include_deleted: bool = False,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get all documents for the current user with ownership enforcement"""
     # Base query with ownership filter
@@ -111,12 +125,9 @@ async def get_documents(
         query = select(Document).where(Document.user_id == current_user.id)
     else:
         query = select(Document).where(
-            and_(
-                Document.user_id == current_user.id,
-                Document.is_deleted == False
-            )
+            and_(Document.user_id == current_user.id, Document.is_deleted == False)
         )
-    
+
     if category:
         query = query.where(Document.category == category)
     if search:
@@ -127,10 +138,10 @@ async def get_documents(
             and_(
                 Document.expiry_date.isnot(None),
                 Document.expiry_date <= threshold,
-                Document.expiry_date >= date.today()
+                Document.expiry_date >= date.today(),
             )
         )
-    
+
     query = query.order_by(Document.created_at.desc())
     result = await db.execute(query)
     return result.scalars().all()
@@ -140,7 +151,7 @@ async def get_documents(
 async def get_document(
     document_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a single document with ownership enforcement"""
     return await get_user_document(document_id, current_user.id, db)
@@ -156,7 +167,7 @@ async def create_document(
     tags: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new document with file metadata, tier limit enforcement, and transaction safety"""
     # Check tier limits before creating
@@ -169,24 +180,24 @@ async def create_document(
                 "code": ErrorCode.TIER_DOCUMENT_LIMIT_REACHED,
                 "message": e.message,
                 "limit": e.limit,
-                "current": e.current
-            }
+                "current": e.current,
+            },
         )
-    
+
     file_path = None
     file_type = None
     original_filename = None
     file_size = None
     file_checksum = None
-    
+
     try:
         if file and file.filename:
             # Validate and read file
             content, checksum = await validate_file(file)
-            
+
             # Ensure upload directory exists
             os.makedirs(settings.upload_dir, exist_ok=True)
-            
+
             # Store original filename and generate unique storage name
             original_filename = file.filename
             ext = os.path.splitext(file.filename)[1] if file.filename else ""
@@ -195,11 +206,11 @@ async def create_document(
             file_type = file.content_type
             file_size = len(content)
             file_checksum = checksum
-            
+
             # Save file
             async with aiofiles.open(file_path, "wb") as f:
                 await f.write(content)
-        
+
         document = Document(
             user_id=current_user.id,
             name=name,
@@ -214,7 +225,7 @@ async def create_document(
             file_size=file_size,
             file_checksum=file_checksum,
             uploaded_at=datetime.utcnow() if file else None,
-            is_deleted=False
+            is_deleted=False,
         )
         db.add(document)
         await db.commit()
@@ -229,7 +240,10 @@ async def create_document(
             os.remove(file_path)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": ErrorCode.TRANSACTION_FAILED, "message": f"Failed to create document: {str(e)}"}
+            detail={
+                "code": ErrorCode.TRANSACTION_FAILED,
+                "message": f"Failed to create document: {str(e)}",
+            },
         )
 
 
@@ -238,16 +252,16 @@ async def update_document(
     document_id: int,
     document_data: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a document with ownership enforcement and transaction safety"""
     document = await get_user_document(document_id, current_user.id, db)
-    
+
     try:
         update_data = document_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(document, field, value)
-        
+
         await db.commit()
         await db.refresh(document)
         return document
@@ -255,7 +269,10 @@ async def update_document(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": ErrorCode.TRANSACTION_FAILED, "message": f"Failed to update document: {str(e)}"}
+            detail={
+                "code": ErrorCode.TRANSACTION_FAILED,
+                "message": f"Failed to update document: {str(e)}",
+            },
         )
 
 
@@ -264,14 +281,16 @@ async def delete_document(
     document_id: int,
     permanent: bool = False,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Delete a document (soft delete by default).
     Use permanent=True for permanent deletion (also deletes file).
     """
-    document = await get_user_document(document_id, current_user.id, db, include_deleted=True)
-    
+    document = await get_user_document(
+        document_id, current_user.id, db, include_deleted=True
+    )
+
     try:
         if permanent:
             # Delete file if exists
@@ -280,13 +299,16 @@ async def delete_document(
             await db.delete(document)
         else:
             document.soft_delete()
-        
+
         await db.commit()
     except Exception as e:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": ErrorCode.TRANSACTION_FAILED, "message": f"Failed to delete document: {str(e)}"}
+            detail={
+                "code": ErrorCode.TRANSACTION_FAILED,
+                "message": f"Failed to delete document: {str(e)}",
+            },
         )
 
 
@@ -294,21 +316,26 @@ async def delete_document(
 async def restore_document(
     document_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Restore a soft-deleted document"""
-    document = await get_user_document(document_id, current_user.id, db, include_deleted=True)
-    
+    document = await get_user_document(
+        document_id, current_user.id, db, include_deleted=True
+    )
+
     if not document.is_deleted:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": ErrorCode.DOC_NOT_FOUND, "message": "Document is not deleted"}
+            detail={
+                "code": ErrorCode.DOC_NOT_FOUND,
+                "message": "Document is not deleted",
+            },
         )
-    
+
     try:
         document.is_deleted = False
         document.deleted_at = None
-        
+
         await db.commit()
         await db.refresh(document)
         return document
@@ -316,5 +343,8 @@ async def restore_document(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"code": ErrorCode.TRANSACTION_FAILED, "message": f"Failed to restore document: {str(e)}"}
+            detail={
+                "code": ErrorCode.TRANSACTION_FAILED,
+                "message": f"Failed to restore document: {str(e)}",
+            },
         )

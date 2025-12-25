@@ -3,26 +3,25 @@ GrePre Smart Life - Email Service
 Handles email notifications for bill reminders and system notifications.
 """
 
+import asyncio
+import logging
 import smtplib
 import ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from typing import Optional, List
-from datetime import datetime
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
-import logging
+from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr
 from pydantic_settings import BaseSettings
-
 
 logger = logging.getLogger(__name__)
 
 
 class EmailSettings(BaseSettings):
     """Email configuration settings."""
-    
+
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -30,10 +29,10 @@ class EmailSettings(BaseSettings):
     SMTP_FROM_EMAIL: str = ""
     SMTP_FROM_NAME: str = "GrePre Smart Life"
     SMTP_USE_TLS: bool = True
-    
+
     # Feature flag
     EMAIL_ENABLED: bool = False
-    
+
     class Config:
         env_prefix = ""
         extra = "ignore"
@@ -44,7 +43,7 @@ email_settings = EmailSettings()
 
 class EmailMessage(BaseModel):
     """Email message model."""
-    
+
     to: List[EmailStr]
     subject: str
     body_text: str
@@ -54,7 +53,7 @@ class EmailMessage(BaseModel):
 
 class EmailTemplate:
     """Email templates for various notifications."""
-    
+
     @staticmethod
     def bill_reminder(
         user_name: str,
@@ -64,9 +63,9 @@ class EmailTemplate:
         days_until_due: int,
     ) -> tuple[str, str]:
         """Generate bill reminder email."""
-        
+
         subject = f"Bill Reminder: {bill_name} due in {days_until_due} day(s)"
-        
+
         text_body = f"""
 Hello {user_name},
 
@@ -83,7 +82,7 @@ Please ensure you make the payment on time to avoid any late fees.
 Best regards,
 GrePre Smart Life Team
         """.strip()
-        
+
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -124,15 +123,15 @@ GrePre Smart Life Team
 </body>
 </html>
         """.strip()
-        
+
         return subject, text_body, html_body
-    
+
     @staticmethod
     def welcome_email(user_name: str, user_email: str) -> tuple[str, str, str]:
         """Generate welcome email for new users."""
-        
+
         subject = "Welcome to GrePre Smart Life!"
-        
+
         text_body = f"""
 Hello {user_name},
 
@@ -154,7 +153,7 @@ If you have any questions, feel free to reply to this email.
 Best regards,
 The GrePre Smart Life Team
         """.strip()
-        
+
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -199,15 +198,15 @@ The GrePre Smart Life Team
 </body>
 </html>
         """.strip()
-        
+
         return subject, text_body, html_body
-    
+
     @staticmethod
     def password_reset(user_name: str, reset_link: str) -> tuple[str, str, str]:
         """Generate password reset email."""
-        
+
         subject = "Reset Your GrePre Smart Life Password"
-        
+
         text_body = f"""
 Hello {user_name},
 
@@ -223,7 +222,7 @@ If you didn't request a password reset, please ignore this email or contact supp
 Best regards,
 The GrePre Smart Life Team
         """.strip()
-        
+
         html_body = f"""
 <!DOCTYPE html>
 <html>
@@ -264,70 +263,74 @@ The GrePre Smart Life Team
 </body>
 </html>
         """.strip()
-        
+
         return subject, text_body, html_body
 
 
 class EmailService:
     """Email service for sending notifications."""
-    
+
     def __init__(self):
         self.settings = email_settings
         self._executor = ThreadPoolExecutor(max_workers=3)
-    
+
     def _send_email_sync(self, message: EmailMessage) -> bool:
         """Send email synchronously (runs in thread pool)."""
         if not self.settings.EMAIL_ENABLED:
-            logger.info(f"Email disabled. Would send to: {message.to}, subject: {message.subject}")
+            logger.info(
+                f"Email disabled. Would send to: {message.to}, subject: {message.subject}"
+            )
             return True
-        
+
         if not self.settings.SMTP_USER or not self.settings.SMTP_PASSWORD:
             logger.warning("SMTP credentials not configured")
             return False
-        
+
         try:
             # Create message
             msg = MIMEMultipart("alternative")
             msg["Subject"] = message.subject
-            msg["From"] = f"{self.settings.SMTP_FROM_NAME} <{self.settings.SMTP_FROM_EMAIL or self.settings.SMTP_USER}>"
+            msg[
+                "From"
+            ] = f"{self.settings.SMTP_FROM_NAME} <{self.settings.SMTP_FROM_EMAIL or self.settings.SMTP_USER}>"
             msg["To"] = ", ".join(message.to)
-            
+
             if message.reply_to:
                 msg["Reply-To"] = message.reply_to
-            
+
             # Attach text and HTML parts
             part1 = MIMEText(message.body_text, "plain")
             msg.attach(part1)
-            
+
             if message.body_html:
                 part2 = MIMEText(message.body_html, "html")
                 msg.attach(part2)
-            
+
             # Send email
             context = ssl.create_default_context()
-            
-            with smtplib.SMTP(self.settings.SMTP_HOST, self.settings.SMTP_PORT) as server:
+
+            with smtplib.SMTP(
+                self.settings.SMTP_HOST, self.settings.SMTP_PORT
+            ) as server:
                 if self.settings.SMTP_USE_TLS:
                     server.starttls(context=context)
                 server.login(self.settings.SMTP_USER, self.settings.SMTP_PASSWORD)
-                server.sendmail(
-                    self.settings.SMTP_USER,
-                    message.to,
-                    msg.as_string()
-                )
-            
+                server.sendmail(self.settings.SMTP_USER, message.to, msg.as_string())
+
             logger.info(f"Email sent successfully to: {message.to}")
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to send email: {str(e)}")
             return False
-    
+
     async def send_email(self, message: EmailMessage) -> bool:
         """Send email asynchronously."""
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(self._executor, self._send_email_sync, message)
-    
+        return await loop.run_in_executor(
+            self._executor, self._send_email_sync, message
+        )
+
     async def send_bill_reminder(
         self,
         user_email: str,
@@ -345,16 +348,16 @@ class EmailService:
             due_date=due_date,
             days_until_due=days_until_due,
         )
-        
+
         message = EmailMessage(
             to=[user_email],
             subject=subject,
             body_text=text_body,
             body_html=html_body,
         )
-        
+
         return await self.send_email(message)
-    
+
     async def send_welcome_email(
         self,
         user_email: str,
@@ -365,16 +368,16 @@ class EmailService:
             user_name=user_name,
             user_email=user_email,
         )
-        
+
         message = EmailMessage(
             to=[user_email],
             subject=subject,
             body_text=text_body,
             body_html=html_body,
         )
-        
+
         return await self.send_email(message)
-    
+
     async def send_password_reset(
         self,
         user_email: str,
@@ -386,14 +389,14 @@ class EmailService:
             user_name=user_name,
             reset_link=reset_link,
         )
-        
+
         message = EmailMessage(
             to=[user_email],
             subject=subject,
             body_text=text_body,
             body_html=html_body,
         )
-        
+
         return await self.send_email(message)
 
 
