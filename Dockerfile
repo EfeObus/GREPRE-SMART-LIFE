@@ -51,9 +51,5 @@ ENV APP_ENV=production
 # Expose port
 EXPOSE 8080
 
-# Disable health check for Railway (Railway has its own health monitoring)
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-#     CMD curl -f http://localhost:8080/health || exit 1
-
-# Run the application - use PORT env variable for Railway compatibility
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 4"]
+# Simple start command - Railway overrides this via railway.json
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
