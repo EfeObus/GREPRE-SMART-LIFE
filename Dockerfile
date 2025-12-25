@@ -48,8 +48,12 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV APP_ENV=production
 
-# Expose port
+# Copy startup script
+COPY --chown=appuser:appuser start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Expose port (Cloud Run uses PORT env variable)
 EXPOSE 8080
 
-# Simple start command - Railway overrides this via railway.json
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Run the application using shell script to properly expand PORT variable
+CMD ["/app/start.sh"]
