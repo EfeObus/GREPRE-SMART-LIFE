@@ -48,12 +48,8 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 ENV PYTHONUNBUFFERED=1
 ENV APP_ENV=production
 
-# Copy startup script
-COPY --chown=appuser:appuser start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
 # Expose port (Cloud Run uses PORT env variable)
 EXPOSE 8080
 
-# Run the application using shell script to properly expand PORT variable
-CMD ["/app/start.sh"]
+# Run the application - use shell form to expand $PORT
+CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}
