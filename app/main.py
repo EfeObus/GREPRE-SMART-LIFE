@@ -14,11 +14,19 @@ from fastapi.templating import Jinja2Templates
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.core.middleware import (CompressionMiddleware, RateLimitMiddleware,
-                                 RequestLoggingMiddleware,
-                                 SecurityHeadersMiddleware)
-from app.routes import (auth_router, bills_router, dashboard_router,
-                        documents_router, health_router)
+from app.core.middleware import (
+    CompressionMiddleware,
+    RateLimitMiddleware,
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
+)
+from app.routes import (
+    auth_router,
+    bills_router,
+    dashboard_router,
+    documents_router,
+    health_router,
+)
 
 # Configure logging
 logging.basicConfig(

@@ -6,8 +6,15 @@ from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import (Bill, BillCategory, BillFrequency, BillStatus,
-                        Document, DocumentCategory, User)
+from app.models import (
+    Bill,
+    BillCategory,
+    BillFrequency,
+    BillStatus,
+    Document,
+    DocumentCategory,
+    User,
+)
 
 # Default bill templates for new users
 DEFAULT_BILL_TEMPLATES = [

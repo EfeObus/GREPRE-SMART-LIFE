@@ -6,8 +6,13 @@ from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.models.models import (BillCategory, BillFrequency, BillStatus,
-                               DocumentCategory, SubscriptionTier)
+from app.models.models import (
+    BillCategory,
+    BillFrequency,
+    BillStatus,
+    DocumentCategory,
+    SubscriptionTier,
+)
 
 
 # User Schemas

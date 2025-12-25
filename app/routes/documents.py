@@ -9,8 +9,16 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 import aiofiles
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, Query,
-                     UploadFile, status)
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
