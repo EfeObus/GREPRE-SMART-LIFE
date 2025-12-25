@@ -4,7 +4,7 @@ GrePre Smart Life - Pydantic Schemas
 from datetime import datetime, date
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
-from app.models.models import BillCategory, BillFrequency, BillStatus, DocumentCategory
+from app.models.models import BillCategory, BillFrequency, BillStatus, DocumentCategory, SubscriptionTier
 
 
 # User Schemas
@@ -30,6 +30,10 @@ class UserResponse(UserBase):
     currency: str
     theme: str
     notifications_enabled: bool
+    subscription_tier: SubscriptionTier
+    subscription_expires_at: Optional[datetime] = None
+    organization_id: Optional[int] = None
+    is_org_admin: bool = False
     created_at: datetime
 
     class Config:
@@ -173,6 +177,12 @@ class DashboardStats(BaseModel):
     due_soon_bills: int
     monthly_total: float
     expiring_documents: int
+    # Tier usage information
+    subscription_tier: SubscriptionTier
+    bills_limit: Optional[int] = None  # None means unlimited
+    documents_limit: Optional[int] = None  # None means unlimited
+    bills_remaining: Optional[int] = None  # None means unlimited
+    documents_remaining: Optional[int] = None  # None means unlimited
 
 
 class UpcomingBill(BaseModel):
@@ -206,3 +216,60 @@ class OCRResult(BaseModel):
 
 # Update forward references
 BillWithPayments.model_rebuild()
+
+
+# Subscription Tier Schemas
+class TierInfo(BaseModel):
+    """Information about a subscription tier"""
+    tier: SubscriptionTier
+    max_bills: Optional[int] = None
+    max_documents: Optional[int] = None
+    price_monthly: Optional[float] = None
+    price_per_user: Optional[float] = None
+    features: List[str] = []
+
+
+class TierUsage(BaseModel):
+    """Current usage against tier limits"""
+    subscription_tier: SubscriptionTier
+    bills_used: int
+    bills_limit: Optional[int] = None
+    bills_remaining: Optional[int] = None
+    documents_used: int
+    documents_limit: Optional[int] = None
+    documents_remaining: Optional[int] = None
+    can_create_bill: bool
+    can_create_document: bool
+    upgrade_required: bool = False
+
+
+class TierUpgradeRequest(BaseModel):
+    """Request to upgrade subscription tier"""
+    target_tier: SubscriptionTier
+
+
+class OrganizationCreate(BaseModel):
+    """Create a new organization"""
+    name: str = Field(..., min_length=2, max_length=255)
+    max_users: int = Field(default=10, ge=1, le=1000)
+
+
+class OrganizationResponse(BaseModel):
+    """Organization response"""
+    id: int
+    name: str
+    slug: str
+    owner_id: int
+    max_users: int
+    price_per_user: float
+    member_count: int = 0
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OrganizationInvite(BaseModel):
+    """Invite a user to organization"""
+    email: EmailStr

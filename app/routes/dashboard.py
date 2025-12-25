@@ -1,6 +1,6 @@
 """
 GrePre Smart Life - Dashboard Routes
-With soft delete filtering and data export
+With soft delete filtering, tier usage, and data export
 """
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Query
@@ -8,10 +8,11 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from app.core.database import get_db
-from app.models import Bill, Document, User, BillStatus
-from app.schemas import DashboardStats, UpcomingBill, ExpiringDocument
+from app.models import Bill, Document, User, BillStatus, TIER_LIMITS
+from app.schemas import DashboardStats, UpcomingBill, ExpiringDocument, TierUsage
 from app.routes.auth import get_current_user
 from app.services.export import export_user_data, export_to_csv_format
+from app.services.tier import get_tier_usage, get_tier_limits, get_all_tier_info
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -108,6 +109,14 @@ async def get_dashboard_stats(
     )
     expiring_documents = result.scalar() or 0
     
+    # Get tier limits for the user
+    tier_limits = get_tier_limits(current_user.subscription_tier)
+    max_bills = tier_limits.get("max_bills")
+    max_documents = tier_limits.get("max_documents")
+    
+    bills_remaining = None if max_bills is None else max(0, max_bills - total_bills)
+    documents_remaining = None if max_documents is None else max(0, max_documents - total_documents)
+    
     return DashboardStats(
         total_bills=total_bills,
         total_documents=total_documents,
@@ -115,7 +124,12 @@ async def get_dashboard_stats(
         overdue_bills=overdue_bills,
         due_soon_bills=due_soon_bills,
         monthly_total=monthly_total,
-        expiring_documents=expiring_documents
+        expiring_documents=expiring_documents,
+        subscription_tier=current_user.subscription_tier,
+        bills_limit=max_bills,
+        documents_limit=max_documents,
+        bills_remaining=bills_remaining,
+        documents_remaining=documents_remaining
     )
 
 
@@ -252,3 +266,29 @@ async def export_data(
             "Content-Disposition": f'attachment; filename="grepre_export_{date.today().isoformat()}.json"'
         }
     )
+
+
+@router.get("/tier-usage", response_model=TierUsage)
+async def get_user_tier_usage(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get the current user's subscription tier usage.
+    Shows limits, current usage, and whether they can create more items.
+    """
+    usage = await get_tier_usage(db, current_user)
+    return TierUsage(**usage)
+
+
+@router.get("/tiers")
+async def get_available_tiers():
+    """
+    Get information about all available subscription tiers.
+    This endpoint is public and shows pricing and features.
+    """
+    return {
+        "tiers": get_all_tier_info(),
+        "currency": "CAD",
+        "billing_cycle": "monthly"
+    }

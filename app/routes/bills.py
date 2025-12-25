@@ -1,6 +1,6 @@
 """
 GrePre Smart Life - Bill Routes
-With strict ownership enforcement, soft deletes, and transaction safety
+With strict ownership enforcement, soft deletes, tier limits, and transaction safety
 """
 from datetime import date, datetime, timedelta
 from typing import List, Optional
@@ -16,6 +16,7 @@ from app.core.exceptions import (
 from app.models import Bill, Payment, User, BillStatus, BillCategory, BillFrequency
 from app.schemas import BillCreate, BillUpdate, BillResponse, BillWithPayments, PaymentCreate, PaymentResponse
 from app.routes.auth import get_current_user
+from app.services.tier import enforce_bill_limit, TierLimitExceededError
 
 router = APIRouter(prefix="/bills", tags=["Bills"])
 
@@ -136,8 +137,11 @@ async def create_bill(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new bill with transaction safety"""
+    """Create a new bill with transaction safety and tier limit enforcement"""
     try:
+        # Check tier limits before creating
+        await enforce_bill_limit(db, current_user)
+        
         bill = Bill(
             **bill_data.model_dump(),
             user_id=current_user.id,
@@ -148,6 +152,16 @@ async def create_bill(
         await db.commit()
         await db.refresh(bill)
         return bill
+    except TierLimitExceededError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.TIER_BILL_LIMIT_REACHED,
+                "message": e.message,
+                "limit": e.limit,
+                "current": e.current
+            }
+        )
     except Exception as e:
         await db.rollback()
         raise HTTPException(

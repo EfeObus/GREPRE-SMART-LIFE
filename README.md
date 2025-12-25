@@ -12,6 +12,10 @@ A production-ready web application built with Python FastAPI to help you manage 
 | **Individual** | $6 CAD/month | Unlimited | Unlimited | All features, priority support |
 | **Organization** | $3 CAD/user/month | Unlimited | Unlimited | Team management, admin dashboard, bulk operations |
 
+### API Endpoints for Tiers
+- `GET /api/v1/dashboard/tiers` - Get available subscription tiers and pricing
+- `GET /api/v1/dashboard/tier-usage` - Get current user's tier usage and limits
+
 ## Features
 
 ### Core Features

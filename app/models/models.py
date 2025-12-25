@@ -10,6 +10,13 @@ import enum
 import hashlib
 
 
+class SubscriptionTier(str, enum.Enum):
+    """User subscription tiers"""
+    FREE = "free"              # 3 bills, 3 documents
+    INDIVIDUAL = "individual"  # Unlimited - $6 CAD/month
+    ORGANIZATION = "organization"  # Unlimited - $3 CAD/user/month
+
+
 class BillCategory(str, enum.Enum):
     RENT = "rent"
     UTILITIES = "utilities"
@@ -74,9 +81,19 @@ class User(Base):
     
     # Bootstrap flag
     is_bootstrapped = Column(Boolean, default=False)
+    
+    # Subscription tier
+    subscription_tier = Column(SQLEnum(SubscriptionTier), default=SubscriptionTier.FREE)
+    subscription_started_at = Column(DateTime, nullable=True)
+    subscription_expires_at = Column(DateTime, nullable=True)
+    
+    # Organization fields
+    organization_id = Column(Integer, ForeignKey("organizations.id"), nullable=True)
+    is_org_admin = Column(Boolean, default=False)
 
     bills = relationship("Bill", back_populates="user", cascade="all, delete-orphan")
     documents = relationship("Document", back_populates="user", cascade="all, delete-orphan")
+    organization = relationship("Organization", back_populates="members")
 
 
 class Bill(Base):
@@ -178,4 +195,48 @@ class BillDocumentLink(Base):
 
     bill = relationship("Bill", back_populates="linked_documents")
     document = relationship("Document", back_populates="linked_bills")
+
+
+class Organization(Base):
+    """Organization for team subscriptions"""
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    slug = Column(String(100), unique=True, index=True, nullable=False)
+    owner_id = Column(Integer, nullable=False)  # User ID of the owner
+    
+    # Subscription
+    max_users = Column(Integer, default=10)
+    price_per_user = Column(Float, default=3.0)  # $3 CAD per user
+    
+    # Audit timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = Column(Boolean, default=True)
+
+    members = relationship("User", back_populates="organization")
+
+
+# Tier limits configuration
+TIER_LIMITS = {
+    SubscriptionTier.FREE: {
+        "max_bills": 3,
+        "max_documents": 3,
+        "price_monthly": 0.0,
+        "features": ["basic_features", "email_reminders"]
+    },
+    SubscriptionTier.INDIVIDUAL: {
+        "max_bills": None,  # Unlimited
+        "max_documents": None,  # Unlimited
+        "price_monthly": 6.0,  # $6 CAD/month
+        "features": ["all_features", "priority_support", "email_reminders"]
+    },
+    SubscriptionTier.ORGANIZATION: {
+        "max_bills": None,  # Unlimited
+        "max_documents": None,  # Unlimited
+        "price_per_user": 3.0,  # $3 CAD/user/month
+        "features": ["all_features", "team_management", "admin_dashboard", "bulk_operations", "priority_support"]
+    }
+}
 

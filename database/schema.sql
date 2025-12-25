@@ -7,6 +7,28 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
+-- SUBSCRIPTION TIER ENUM
+-- ============================================
+CREATE TYPE subscription_tier AS ENUM ('free', 'individual', 'organization');
+
+-- ============================================
+-- ORGANIZATIONS TABLE
+-- ============================================
+CREATE TABLE organizations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(100) UNIQUE NOT NULL,
+    owner_id INTEGER NOT NULL,
+    max_users INTEGER DEFAULT 10,
+    price_per_user DECIMAL(10, 2) DEFAULT 3.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true
+);
+
+CREATE INDEX idx_organizations_slug ON organizations(slug);
+
+-- ============================================
 -- USERS TABLE
 -- ============================================
 CREATE TABLE users (
@@ -21,6 +43,12 @@ CREATE TABLE users (
     theme VARCHAR(20) DEFAULT 'system',
     notification_enabled BOOLEAN DEFAULT true,
     onboarding_completed BOOLEAN DEFAULT false,
+    -- Subscription tier fields
+    subscription_tier subscription_tier DEFAULT 'free',
+    subscription_started_at TIMESTAMP WITH TIME ZONE,
+    subscription_expires_at TIMESTAMP WITH TIME ZONE,
+    organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
+    is_org_admin BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

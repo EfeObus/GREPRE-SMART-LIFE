@@ -1,6 +1,6 @@
 """
 GrePre Smart Life - Document Routes
-With strict ownership enforcement, soft deletes, file metadata, and transaction safety
+With strict ownership enforcement, soft deletes, file metadata, tier limits, and transaction safety
 """
 import os
 import uuid
@@ -17,6 +17,7 @@ from app.core.exceptions import ErrorCode
 from app.models import Document, User, DocumentCategory
 from app.schemas import DocumentCreate, DocumentUpdate, DocumentResponse
 from app.routes.auth import get_current_user
+from app.services.tier import enforce_document_limit, TierLimitExceededError
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -157,7 +158,21 @@ async def create_document(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create a new document with file metadata and transaction safety"""
+    """Create a new document with file metadata, tier limit enforcement, and transaction safety"""
+    # Check tier limits before creating
+    try:
+        await enforce_document_limit(db, current_user)
+    except TierLimitExceededError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.TIER_DOCUMENT_LIMIT_REACHED,
+                "message": e.message,
+                "limit": e.limit,
+                "current": e.current
+            }
+        )
+    
     file_path = None
     file_type = None
     original_filename = None
