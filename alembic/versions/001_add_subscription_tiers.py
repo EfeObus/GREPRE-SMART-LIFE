@@ -1,7 +1,7 @@
 """add subscription tiers
 
 Revision ID: add_subscription_tiers
-Revises: 
+Revises:
 Create Date: 2024-12-24
 
 """

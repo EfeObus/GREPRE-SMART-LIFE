@@ -33,7 +33,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE users 
+                ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS default_reminder_days INTEGER DEFAULT 7
             """
                 )
@@ -47,7 +47,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE users 
+                ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS default_bill_category VARCHAR(50) DEFAULT 'OTHER'
             """
                 )
@@ -61,7 +61,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE users 
+                ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS is_bootstrapped BOOLEAN DEFAULT FALSE
             """
                 )
@@ -78,7 +78,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE bills 
+                ALTER TABLE bills
                 ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE
             """
                 )
@@ -92,7 +92,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE bills 
+                ALTER TABLE bills
                 ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP
             """
                 )
@@ -122,7 +122,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS original_filename VARCHAR(255)
             """
                 )
@@ -136,7 +136,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS file_size BIGINT
             """
                 )
@@ -150,7 +150,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS file_checksum VARCHAR(64)
             """
                 )
@@ -164,7 +164,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMP
             """
                 )
@@ -178,7 +178,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE
             """
                 )
@@ -192,7 +192,7 @@ async def migrate():
             await conn.execute(
                 text(
                     """
-                ALTER TABLE documents 
+                ALTER TABLE documents
                 ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP
             """
                 )

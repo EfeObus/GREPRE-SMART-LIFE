@@ -22,7 +22,7 @@ os.environ["JWT_SECRET"] = "test_jwt_secret_for_testing_only"
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
-from app.models import Bill, Category, Document, Reminder, User
+from app.models import Bill, Category, User
 
 # Test database URL (in-memory SQLite for fast tests)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

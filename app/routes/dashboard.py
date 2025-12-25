@@ -11,7 +11,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.models import TIER_LIMITS, Bill, BillStatus, Document, User
+from app.models import Bill, BillStatus, Document, User
 from app.routes.auth import get_current_user
 from app.schemas import DashboardStats, ExpiringDocument, TierUsage, UpcomingBill
 from app.services.export import export_to_csv_format, export_user_data
@@ -36,7 +36,7 @@ async def get_dashboard_stats(
     # Total bills (excluding deleted)
     result = await db.execute(
         select(func.count(Bill.id)).where(
-            and_(Bill.user_id == current_user.id, Bill.is_deleted == False)
+            and_(Bill.user_id == current_user.id, not Bill.is_deleted)
         )
     )
     total_bills = result.scalar() or 0
@@ -44,7 +44,7 @@ async def get_dashboard_stats(
     # Total documents (excluding deleted)
     result = await db.execute(
         select(func.count(Document.id)).where(
-            and_(Document.user_id == current_user.id, Document.is_deleted == False)
+            and_(Document.user_id == current_user.id, not Document.is_deleted)
         )
     )
     total_documents = result.scalar() or 0
@@ -55,7 +55,7 @@ async def get_dashboard_stats(
             and_(
                 Bill.user_id == current_user.id,
                 Bill.status == BillStatus.PENDING,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
     )
@@ -67,7 +67,7 @@ async def get_dashboard_stats(
             and_(
                 Bill.user_id == current_user.id,
                 Bill.status == BillStatus.OVERDUE,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
     )
@@ -79,7 +79,7 @@ async def get_dashboard_stats(
             and_(
                 Bill.user_id == current_user.id,
                 Bill.status == BillStatus.DUE_SOON,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
     )
@@ -92,7 +92,7 @@ async def get_dashboard_stats(
                 Bill.user_id == current_user.id,
                 Bill.due_date >= month_start,
                 Bill.due_date <= month_end,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
     )
@@ -107,7 +107,7 @@ async def get_dashboard_stats(
                 Document.expiry_date.isnot(None),
                 Document.expiry_date <= expiry_threshold,
                 Document.expiry_date >= today,
-                Document.is_deleted == False,
+                not Document.is_deleted,
             )
         )
     )
@@ -154,7 +154,7 @@ async def get_upcoming_bills(
                 Bill.user_id == current_user.id,
                 Bill.status != BillStatus.PAID,
                 Bill.due_date >= today,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
         .order_by(Bill.due_date)
@@ -190,7 +190,7 @@ async def get_overdue_bills(
             and_(
                 Bill.user_id == current_user.id,
                 Bill.status == BillStatus.OVERDUE,
-                Bill.is_deleted == False,
+                not Bill.is_deleted,
             )
         )
         .order_by(Bill.due_date)
@@ -229,7 +229,7 @@ async def get_expiring_documents(
                 Document.expiry_date.isnot(None),
                 Document.expiry_date <= expiry_threshold,
                 Document.expiry_date >= today,
-                Document.is_deleted == False,
+                not Document.is_deleted,
             )
         )
         .order_by(Document.expiry_date)

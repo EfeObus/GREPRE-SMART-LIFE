@@ -4,7 +4,7 @@ Complete and portable data export functionality
 """
 
 from datetime import date, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +71,7 @@ async def export_user_data(
     )
 
     if not include_deleted:
-        bills_query = bills_query.where(Bill.is_deleted == False)
+        bills_query = bills_query.where(not Bill.is_deleted)
 
     result = await db.execute(bills_query)
     bills = result.scalars().all()
@@ -99,7 +99,7 @@ async def export_user_data(
     )
 
     if not include_deleted:
-        docs_query = docs_query.where(Document.is_deleted == False)
+        docs_query = docs_query.where(not Document.is_deleted)
 
     result = await db.execute(docs_query)
     documents = result.scalars().all()
@@ -245,7 +245,7 @@ async def export_to_csv_format(
     if data_type == "bills":
         query = (
             select(Bill)
-            .where(Bill.user_id == user.id, Bill.is_deleted == False)
+            .where(Bill.user_id == user.id, not Bill.is_deleted)
             .order_by(Bill.due_date)
         )
 
@@ -273,7 +273,7 @@ async def export_to_csv_format(
     elif data_type == "documents":
         query = (
             select(Document)
-            .where(Document.user_id == user.id, Document.is_deleted == False)
+            .where(Document.user_id == user.id, not Document.is_deleted)
             .order_by(Document.name)
         )
 

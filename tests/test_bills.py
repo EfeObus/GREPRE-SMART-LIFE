@@ -2,7 +2,7 @@
 GrePre Smart Life - Bill Management Tests
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from httpx import AsyncClient

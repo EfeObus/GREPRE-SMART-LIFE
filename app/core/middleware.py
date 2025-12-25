@@ -9,11 +9,9 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
-from io import BytesIO
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict
 
-from fastapi import HTTPException, Request, Response, status
+from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp

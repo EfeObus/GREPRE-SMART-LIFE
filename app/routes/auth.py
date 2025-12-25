@@ -3,8 +3,6 @@ GrePre Smart Life - Authentication Routes
 With user bootstrap, account lockout, password validation, and refresh tokens
 """
 
-from datetime import timedelta
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -14,9 +12,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import ErrorCode
 from app.core.security import (
-    REFRESH_TOKEN_EXPIRE_DAYS,
     create_access_token,
-    create_refresh_token,
     create_token_pair,
     decode_refresh_token,
     decode_token,

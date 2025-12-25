@@ -4,8 +4,7 @@ GrePre Smart Life - Database Models
 
 import enum
 import hashlib
-from datetime import date, datetime
-from typing import List, Optional
+from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, Column, Date, DateTime
 from sqlalchemy import Enum as SQLEnum

@@ -6,7 +6,7 @@ Standardized pagination for list endpoints
 from typing import Generic, List, Optional, TypeVar
 
 from fastapi import Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

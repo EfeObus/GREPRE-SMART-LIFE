@@ -3,23 +3,16 @@ GrePre Smart Life - Bill Routes
 With strict ownership enforcement, soft deletes, tier limits, and transaction safety
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
-from app.core.exceptions import (
-    AccessDeniedError,
-    ErrorCode,
-    NotFoundError,
-    TransactionError,
-    ValidationError,
-    create_success_response,
-)
+from app.core.exceptions import ErrorCode
 from app.models import Bill, BillCategory, BillFrequency, BillStatus, Payment, User
 from app.routes.auth import get_current_user
 from app.schemas import (
@@ -58,7 +51,7 @@ async def get_user_bill(
     query = select(Bill).where(Bill.id == bill_id)
 
     if not include_deleted:
-        query = query.where(Bill.is_deleted == False)
+        query = query.where(not Bill.is_deleted)
 
     result = await db.execute(query)
     bill = result.scalar_one_or_none()
@@ -97,7 +90,7 @@ async def get_bills(
         query = select(Bill).where(Bill.user_id == current_user.id)
     else:
         query = select(Bill).where(
-            and_(Bill.user_id == current_user.id, Bill.is_deleted == False)
+            and_(Bill.user_id == current_user.id, not Bill.is_deleted)
         )
 
     if status_filter:

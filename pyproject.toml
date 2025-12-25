@@ -23,3 +23,23 @@ extend-exclude = '''
 profile = "black"
 line_length = 88
 skip_gitignore = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "F401",  # Unused imports - needed for re-exports in __init__.py
+    "F403",  # Star imports - needed for alembic
+    "E712",  # Comparison to True/False - SQLAlchemy requires == for queries
+    "E501",  # Line too long - handled by black
+    "W291",  # Trailing whitespace - in SQL strings
+    "W293",  # Blank line contains whitespace - in email templates
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"alembic/*" = ["F401", "F403"]
+"tests/*" = ["F401"]

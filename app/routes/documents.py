@@ -10,16 +10,7 @@ from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 import aiofiles
-from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
-)
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +19,7 @@ from app.core.database import get_db
 from app.core.exceptions import ErrorCode
 from app.models import Document, DocumentCategory, User
 from app.routes.auth import get_current_user
-from app.schemas import DocumentCreate, DocumentResponse, DocumentUpdate
+from app.schemas import DocumentResponse, DocumentUpdate
 from app.services.tier import TierLimitExceededError, enforce_document_limit
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -59,7 +50,7 @@ async def get_user_document(
     query = select(Document).where(Document.id == document_id)
 
     if not include_deleted:
-        query = query.where(Document.is_deleted == False)
+        query = query.where(not Document.is_deleted)
 
     result = await db.execute(query)
     document = result.scalar_one_or_none()
@@ -134,7 +125,7 @@ async def get_documents(
         query = select(Document).where(Document.user_id == current_user.id)
     else:
         query = select(Document).where(
-            and_(Document.user_id == current_user.id, Document.is_deleted == False)
+            and_(Document.user_id == current_user.id, not Document.is_deleted)
         )
 
     if category:

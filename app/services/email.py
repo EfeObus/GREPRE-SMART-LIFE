@@ -106,13 +106,13 @@ GrePre Smart Life Team
         <div class="content">
             <p>Hello <strong>{user_name}</strong>,</p>
             <p>This is a reminder that your bill is due soon.</p>
-            
+
             <div class="bill-details">
                 <h3>{bill_name}</h3>
                 <p class="amount">${amount:.2f}</p>
                 <p class="due-date">Due: {due_date.strftime('%B %d, %Y')} ({days_until_due} day(s) remaining)</p>
             </div>
-            
+
             <p>Please ensure you make the payment on time to avoid any late fees.</p>
         </div>
         <div class="footer">
@@ -177,9 +177,9 @@ The GrePre Smart Life Team
         <div class="content">
             <p>Hello <strong>{user_name}</strong>,</p>
             <p>We're thrilled to have you join GrePre Smart Life! Your account has been successfully created.</p>
-            
+
             <p><strong>Your email:</strong> {user_email}</p>
-            
+
             <h3>What you can do with GrePre Smart Life:</h3>
             <div class="features">
                 <div class="feature">📋 Track and manage all your bills in one place</div>
@@ -188,7 +188,7 @@ The GrePre Smart Life Team
                 <div class="feature">📊 Categorize and analyze your expenses</div>
                 <div class="feature">📥 Export your financial data anytime</div>
             </div>
-            
+
             <p>Get started by adding your first bill today!</p>
         </div>
         <div class="footer">
@@ -245,15 +245,15 @@ The GrePre Smart Life Team
         <div class="content">
             <p>Hello <strong>{user_name}</strong>,</p>
             <p>We received a request to reset your GrePre Smart Life password.</p>
-            
+
             <p style="text-align: center;">
                 <a href="{reset_link}" class="cta-button">Reset Password</a>
             </p>
-            
+
             <p class="warning">
                 ⏰ This link will expire in <strong>1 hour</strong>.
             </p>
-            
+
             <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
         </div>
         <div class="footer">

@@ -4,7 +4,7 @@ Handles tier limit checking and subscription management
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +27,7 @@ async def get_user_bill_count(db: AsyncSession, user_id: int) -> int:
     """Get the count of active (non-deleted) bills for a user"""
     result = await db.execute(
         select(func.count(Bill.id)).where(
-            and_(Bill.user_id == user_id, Bill.is_deleted == False)
+            and_(Bill.user_id == user_id, not Bill.is_deleted)
         )
     )
     return result.scalar() or 0
@@ -37,7 +37,7 @@ async def get_user_document_count(db: AsyncSession, user_id: int) -> int:
     """Get the count of active (non-deleted) documents for a user"""
     result = await db.execute(
         select(func.count(Document.id)).where(
-            and_(Document.user_id == user_id, Document.is_deleted == False)
+            and_(Document.user_id == user_id, not Document.is_deleted)
         )
     )
     return result.scalar() or 0
