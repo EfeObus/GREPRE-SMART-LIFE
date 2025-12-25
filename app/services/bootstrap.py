@@ -2,6 +2,7 @@
 GrePre Smart Life - User Bootstrap Service
 Creates default data for first-time users
 """
+
 from datetime import date, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -171,9 +172,11 @@ def get_reminder_options() -> list:
     return [
         {
             "value": days,
-            "label": f"{days} day{'s' if days != 1 else ''} before"
-            if days > 0
-            else "On due date",
+            "label": (
+                f"{days} day{'s' if days != 1 else ''} before"
+                if days > 0
+                else "On due date"
+            ),
         }
         for days in DEFAULT_REMINDER_OPTIONS
     ]

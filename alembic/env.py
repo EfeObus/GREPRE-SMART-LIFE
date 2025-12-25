@@ -1,6 +1,7 @@
 """
 Alembic environment configuration for GrePre Smart Life
 """
+
 import asyncio
 import os
 import sys

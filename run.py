@@ -1,6 +1,7 @@
 """
 GrePre Smart Life - Run Server
 """
+
 import uvicorn
 
 from app.core.config import settings

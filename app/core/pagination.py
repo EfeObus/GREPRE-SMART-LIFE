@@ -2,6 +2,7 @@
 GrePre Smart Life - Pagination Utilities
 Standardized pagination for list endpoints
 """
+
 from typing import Generic, List, Optional, TypeVar
 
 from fastapi import Query

@@ -1,6 +1,7 @@
 """
 GrePre Smart Life - Database Models
 """
+
 import enum
 import hashlib
 from datetime import date, datetime

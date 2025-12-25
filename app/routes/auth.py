@@ -2,6 +2,7 @@
 GrePre Smart Life - Authentication Routes
 With user bootstrap, account lockout, password validation, and refresh tokens
 """
+
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status

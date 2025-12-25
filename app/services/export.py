@@ -2,6 +2,7 @@
 GrePre Smart Life - Data Export Service
 Complete and portable data export functionality
 """
+
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
@@ -152,7 +153,7 @@ def export_user_profile(user: User) -> Dict[str, Any]:
             getattr(user, "default_bill_category", "other")
         ),
         "created_at": serialize_date(user.created_at),
-        "updated_at": serialize_date(user.updated_at)
+        "updated_at": serialize_date(user.updated_at),
         # Excludes: hashed_password, is_active, is_bootstrapped
     }
 
@@ -195,7 +196,7 @@ def export_document(doc: Document, include_metadata: bool = True) -> Dict[str, A
         "file_type": doc.file_type,
         "original_filename": getattr(doc, "original_filename", None),
         "file_size": getattr(doc, "file_size", None),
-        "has_file": doc.file_path is not None
+        "has_file": doc.file_path is not None,
         # Excludes: file_path (internal storage path), file_checksum (internal)
     }
 
@@ -284,9 +285,9 @@ async def export_to_csv_format(
                 "ID": doc.id,
                 "Name": doc.name,
                 "Category": serialize_enum(doc.category),
-                "Expiry Date": serialize_date(doc.expiry_date)
-                if doc.expiry_date
-                else "",
+                "Expiry Date": (
+                    serialize_date(doc.expiry_date) if doc.expiry_date else ""
+                ),
                 "Protected": "Yes" if doc.is_protected else "No",
                 "Tags": doc.tags or "",
                 "File Type": doc.file_type or "",

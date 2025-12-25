@@ -2,6 +2,7 @@
 GrePre Smart Life - Health Check Routes
 For load balancers, monitoring, and deployment checks
 """
+
 import os
 import time
 from datetime import datetime

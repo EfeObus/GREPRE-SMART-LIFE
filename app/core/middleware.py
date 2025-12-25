@@ -2,6 +2,7 @@
 GrePre Smart Life - Production Middleware
 Rate limiting, security headers, request logging, compression
 """
+
 import asyncio
 import gzip
 import logging

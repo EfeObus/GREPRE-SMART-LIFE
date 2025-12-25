@@ -2,6 +2,7 @@
 GrePre Smart Life - Main Application
 Production-ready with security middleware, rate limiting, and logging
 """
+
 import logging
 import os
 from contextlib import asynccontextmanager

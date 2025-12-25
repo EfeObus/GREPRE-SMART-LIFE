@@ -1,6 +1,7 @@
 """
 GrePre Smart Life - Pydantic Schemas
 """
+
 from datetime import date, datetime
 from typing import List, Optional
 

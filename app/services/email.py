@@ -290,9 +290,9 @@ class EmailService:
             # Create message
             msg = MIMEMultipart("alternative")
             msg["Subject"] = message.subject
-            msg[
-                "From"
-            ] = f"{self.settings.SMTP_FROM_NAME} <{self.settings.SMTP_FROM_EMAIL or self.settings.SMTP_USER}>"
+            msg["From"] = (
+                f"{self.settings.SMTP_FROM_NAME} <{self.settings.SMTP_FROM_EMAIL or self.settings.SMTP_USER}>"
+            )
             msg["To"] = ", ".join(message.to)
 
             if message.reply_to:

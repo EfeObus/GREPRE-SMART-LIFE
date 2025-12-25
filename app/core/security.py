@@ -2,6 +2,7 @@
 GrePre Smart Life - Security Utilities
 With refresh token support for production use.
 """
+
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Tuple

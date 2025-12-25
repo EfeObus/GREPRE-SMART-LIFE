@@ -3,6 +3,7 @@ GrePre Smart Life - Database Migration Script
 Adds soft delete, file metadata, and user bootstrap columns
 Run this script once to update existing database schema.
 """
+
 import asyncio
 import os
 import sys

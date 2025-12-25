@@ -2,6 +2,7 @@
 GrePre Smart Life - Custom Exceptions and Error Handling
 Consistent error model with domain-specific error codes
 """
+
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, Request
