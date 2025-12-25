@@ -12,17 +12,14 @@ class TestBillCRUD:
     """Test bill CRUD operations."""
 
     @pytest.mark.asyncio
-    async def test_create_bill(
-        self, authenticated_client: AsyncClient, test_category, factory
-    ):
+    async def test_create_bill(self, authenticated_client: AsyncClient, factory):
         """Test creating a new bill."""
-        bill_data = factory.bill_data(category_id=str(test_category.id))
+        bill_data = factory.bill_data()
         response = await authenticated_client.post("/api/v1/bills", json=bill_data)
         assert response.status_code in [200, 201]
         data = response.json()
-        assert data["success"] is True
-        assert data["data"]["name"] == bill_data["name"]
-        assert float(data["data"]["amount"]) == bill_data["amount"]
+        assert data["name"] == bill_data["name"]
+        assert float(data["amount"]) == bill_data["amount"]
 
     @pytest.mark.asyncio
     async def test_get_bills_list(self, authenticated_client: AsyncClient, test_bill):
@@ -30,9 +27,9 @@ class TestBillCRUD:
         response = await authenticated_client.get("/api/v1/bills")
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
-        assert isinstance(data["data"], list)
-        assert len(data["data"]) >= 1
+        # Response is a list directly
+        assert isinstance(data, list)
+        assert len(data) >= 1
 
     @pytest.mark.asyncio
     async def test_get_bill_by_id(self, authenticated_client: AsyncClient, test_bill):
@@ -40,9 +37,8 @@ class TestBillCRUD:
         response = await authenticated_client.get(f"/api/v1/bills/{test_bill.id}")
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
-        assert data["data"]["id"] == str(test_bill.id)
-        assert data["data"]["name"] == test_bill.name
+        assert data["id"] == test_bill.id
+        assert data["name"] == test_bill.name
 
     @pytest.mark.asyncio
     async def test_update_bill(self, authenticated_client: AsyncClient, test_bill):
@@ -56,8 +52,7 @@ class TestBillCRUD:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
-        assert data["data"]["name"] == update_data["name"]
+        assert data["name"] == update_data["name"]
 
     @pytest.mark.asyncio
     async def test_delete_bill(self, authenticated_client: AsyncClient, test_bill):
@@ -67,14 +62,14 @@ class TestBillCRUD:
 
         # Verify bill is not returned in list
         list_response = await authenticated_client.get("/api/v1/bills")
-        bills = list_response.json()["data"]
+        bills = list_response.json()
         bill_ids = [b["id"] for b in bills]
-        assert str(test_bill.id) not in bill_ids
+        assert test_bill.id not in bill_ids
 
     @pytest.mark.asyncio
     async def test_get_nonexistent_bill(self, authenticated_client: AsyncClient):
         """Test getting a bill that doesn't exist."""
-        fake_id = "00000000-0000-0000-0000-000000000000"
+        fake_id = 999999
         response = await authenticated_client.get(f"/api/v1/bills/{fake_id}")
         assert response.status_code == 404
 
@@ -83,28 +78,24 @@ class TestBillValidation:
     """Test bill data validation."""
 
     @pytest.mark.asyncio
-    async def test_create_bill_without_name(
-        self, authenticated_client: AsyncClient, test_category
-    ):
+    async def test_create_bill_without_name(self, authenticated_client: AsyncClient):
         """Test creating bill without name fails."""
         bill_data = {
             "amount": 100.00,
             "due_date": datetime.utcnow().isoformat(),
-            "category_id": str(test_category.id),
+            "category": "other",
         }
         response = await authenticated_client.post("/api/v1/bills", json=bill_data)
         assert response.status_code == 422
 
     @pytest.mark.asyncio
-    async def test_create_bill_negative_amount(
-        self, authenticated_client: AsyncClient, test_category
-    ):
+    async def test_create_bill_negative_amount(self, authenticated_client: AsyncClient):
         """Test creating bill with negative amount fails."""
         bill_data = {
             "name": "Negative Bill",
             "amount": -50.00,
             "due_date": datetime.utcnow().isoformat(),
-            "category_id": str(test_category.id),
+            "category": "other",
         }
         response = await authenticated_client.post("/api/v1/bills", json=bill_data)
         assert response.status_code in [400, 422]
@@ -121,19 +112,17 @@ class TestBillFiltering:
         response = await authenticated_client.get("/api/v1/bills?status=pending")
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
+        assert isinstance(data, list)
 
     @pytest.mark.asyncio
     async def test_filter_bills_by_category(
-        self, authenticated_client: AsyncClient, test_bill, test_category
+        self, authenticated_client: AsyncClient, test_bill
     ):
         """Test filtering bills by category."""
-        response = await authenticated_client.get(
-            f"/api/v1/bills?category_id={test_category.id}"
-        )
+        response = await authenticated_client.get("/api/v1/bills?category=other")
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
+        assert isinstance(data, list)
 
 
 class TestBillAuthorization:

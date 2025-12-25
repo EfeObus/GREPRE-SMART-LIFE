@@ -6,6 +6,7 @@ Rate limiting, security headers, request logging, compression
 import asyncio
 import gzip
 import logging
+import os
 import time
 import uuid
 from collections import defaultdict
@@ -96,8 +97,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.default_window = default_window
         self.auth_limit = auth_limit
         self.auth_window = auth_window
+        # Allow disabling rate limiting for tests
+        self.disabled = os.environ.get("DISABLE_RATE_LIMIT", "").lower() == "true"
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Skip rate limiting if disabled (for tests)
+        if self.disabled:
+            return await call_next(request)
         # Get client identifier
         client_ip = self._get_client_ip(request)
         path = request.url.path

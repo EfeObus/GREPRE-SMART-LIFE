@@ -4,28 +4,30 @@ GrePre Smart Life - Test Configuration and Fixtures
 
 import asyncio
 import os
-from datetime import datetime
+from datetime import date, timedelta
 from typing import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import StaticPool
 
-# Set test environment before importing app
+# Set test environment before importing app - DISABLE RATE LIMITING
 os.environ["APP_ENV"] = "test"
 os.environ["DEBUG"] = "false"
 os.environ["SECRET_KEY"] = "test_secret_key_for_testing_only"
 os.environ["JWT_SECRET"] = "test_jwt_secret_for_testing_only"
+os.environ["DISABLE_RATE_LIMIT"] = "true"
 
+from app.core.config import settings
 from app.core.database import Base, get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
-from app.models import Bill, Category, User
+from app.models import Bill, BillCategory, BillFrequency, BillStatus, User
 
-# Test database URL (in-memory SQLite for fast tests)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Use the same database URL from settings (PostgreSQL)
+TEST_DATABASE_URL = os.environ.get("DATABASE_URL", settings.database_url)
 
 
 @pytest.fixture(scope="session")
@@ -38,29 +40,31 @@ def event_loop() -> Generator:
 
 @pytest_asyncio.fixture(scope="function")
 async def async_engine():
-    """Create async engine for tests."""
+    """Create async engine for tests using PostgreSQL."""
     engine = create_async_engine(
         TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
         echo=False,
     )
 
+    # Create all tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
+    # Clean up tables after each test (truncate instead of drop for speed)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        # Get all table names and truncate them
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(text(f'TRUNCATE TABLE "{table.name}" CASCADE'))
 
     await engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
-    """Create async session for tests."""
-    async_session_maker = async_sessionmaker(
+async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
+    """Create a single shared session for tests."""
+    session_maker = async_sessionmaker(
         async_engine,
         class_=AsyncSession,
         expire_on_commit=False,
@@ -68,24 +72,16 @@ async def async_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
         autoflush=False,
     )
 
-    async with async_session_maker() as session:
+    async with session_maker() as session:
         yield session
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client(async_engine) -> AsyncGenerator[AsyncClient, None]:
-    """Create test client with database override."""
-    async_session_maker = async_sessionmaker(
-        async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-        autocommit=False,
-        autoflush=False,
-    )
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create test client with database override using shared session."""
 
     async def override_get_db():
-        async with async_session_maker() as session:
-            yield session
+        yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
 
@@ -97,18 +93,17 @@ async def client(async_engine) -> AsyncGenerator[AsyncClient, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_user(async_session: AsyncSession) -> User:
-    """Create a test user."""
+async def test_user(db_session: AsyncSession) -> User:
+    """Create a test user using the shared session."""
     user = User(
         email="testuser@example.com",
-        password_hash=get_password_hash("TestPassword123!"),
-        first_name="Test",
-        last_name="User",
+        hashed_password=get_password_hash("TestPassword123!"),
+        full_name="Test User",
         is_active=True,
     )
-    async_session.add(user)
-    await async_session.commit()
-    await async_session.refresh(user)
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 
@@ -128,37 +123,22 @@ async def authenticated_client(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def test_category(async_session: AsyncSession, test_user: User) -> Category:
-    """Create a test category."""
-    category = Category(
-        name="Test Category",
-        color="#FF5733",
-        icon="folder",
-        user_id=test_user.id,
-    )
-    async_session.add(category)
-    await async_session.commit()
-    await async_session.refresh(category)
-    return category
-
-
-@pytest_asyncio.fixture(scope="function")
-async def test_bill(
-    async_session: AsyncSession, test_user: User, test_category: Category
-) -> Bill:
-    """Create a test bill."""
+async def test_bill(db_session: AsyncSession, test_user: User) -> Bill:
+    """Create a test bill using the shared session."""
     bill = Bill(
         name="Test Bill",
         amount=100.50,
-        due_date=datetime.utcnow(),
-        category_id=test_category.id,
+        due_date=date.today() + timedelta(days=7),
+        category=BillCategory.OTHER,
+        frequency=BillFrequency.MONTHLY,
+        status=BillStatus.PENDING,
         user_id=test_user.id,
-        is_recurring=False,
-        status="pending",
+        is_auto_pay=False,
+        is_deleted=False,
     )
-    async_session.add(bill)
-    await async_session.commit()
-    await async_session.refresh(bill)
+    db_session.add(bill)
+    await db_session.commit()
+    await db_session.refresh(bill)
     return bill
 
 
@@ -170,39 +150,27 @@ class TestDataFactory:
     def user_data(
         email: str = "newuser@example.com",
         password: str = "SecurePass123!",
-        first_name: str = "New",
-        last_name: str = "User",
+        full_name: str = "New User",
     ) -> dict:
         return {
             "email": email,
             "password": password,
-            "first_name": first_name,
-            "last_name": last_name,
+            "full_name": full_name,
         }
 
     @staticmethod
     def bill_data(
         name: str = "New Bill",
         amount: float = 50.00,
-        category_id: str = None,
+        category: str = "other",
     ) -> dict:
         return {
             "name": name,
             "amount": amount,
-            "due_date": datetime.utcnow().isoformat(),
-            "category_id": category_id,
-            "is_recurring": False,
-        }
-
-    @staticmethod
-    def category_data(
-        name: str = "New Category",
-        color: str = "#3498DB",
-    ) -> dict:
-        return {
-            "name": name,
-            "color": color,
-            "icon": "star",
+            "due_date": (date.today() + timedelta(days=14)).isoformat(),
+            "category": category,
+            "frequency": "monthly",
+            "is_auto_pay": False,
         }
 
 

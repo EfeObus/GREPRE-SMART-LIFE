@@ -88,7 +88,10 @@ class User(Base):
     is_bootstrapped = Column(Boolean, default=False)
 
     # Subscription tier
-    subscription_tier = Column(SQLEnum(SubscriptionTier), default=SubscriptionTier.FREE)
+    subscription_tier = Column(
+        SQLEnum(SubscriptionTier, values_callable=lambda x: [e.value for e in x]),
+        default=SubscriptionTier.FREE,
+    )
     subscription_started_at = Column(DateTime, nullable=True)
     subscription_expires_at = Column(DateTime, nullable=True)
 

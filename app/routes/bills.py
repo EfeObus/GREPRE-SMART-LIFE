@@ -51,7 +51,7 @@ async def get_user_bill(
     query = select(Bill).where(Bill.id == bill_id)
 
     if not include_deleted:
-        query = query.where(not Bill.is_deleted)
+        query = query.where(Bill.is_deleted == False)  # noqa: E712
 
     result = await db.execute(query)
     bill = result.scalar_one_or_none()
@@ -90,7 +90,9 @@ async def get_bills(
         query = select(Bill).where(Bill.user_id == current_user.id)
     else:
         query = select(Bill).where(
-            and_(Bill.user_id == current_user.id, not Bill.is_deleted)
+            and_(
+                Bill.user_id == current_user.id, Bill.is_deleted == False
+            )  # noqa: E712
         )
 
     if status_filter:
@@ -128,7 +130,7 @@ async def get_bill(
     # Then get with relationships
     result = await db.execute(
         select(Bill)
-        .options(selectinload(Bill.payments))
+        .options(selectinload(Bill.payments), selectinload(Bill.linked_documents))
         .where(and_(Bill.id == bill_id, Bill.user_id == current_user.id))
     )
     bill = result.scalar_one_or_none()
