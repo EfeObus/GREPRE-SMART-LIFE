@@ -138,6 +138,15 @@ grepre-smartlife/
 │   │   ├── export.py       # Data export
 │   │   └── bootstrap.py    # New user setup
 │   └── main.py         # FastAPI application
+├── mobile/             # Flutter mobile application
+│   ├── lib/
+│   │   ├── core/           # Config, network, routing, theme
+│   │   ├── features/       # Feature modules (auth, bills, etc.)
+│   │   ├── shared/         # Shared widgets and utilities
+│   │   └── main.dart       # App entry point
+│   ├── ios/            # iOS-specific configuration
+│   ├── android/        # Android-specific configuration
+│   └── pubspec.yaml    # Flutter dependencies
 ├── alembic/            # Database migrations
 ├── database/           # SQL scripts and migration helpers
 ├── templates/          # Jinja2 HTML templates
@@ -153,6 +162,40 @@ grepre-smartlife/
 ├── requirements.txt    # Python dependencies
 └── run.py              # Application entry point
 ```
+
+## Mobile App
+
+The mobile application is built with Flutter and supports iOS and Android platforms.
+
+### Mobile Setup
+
+```bash
+cd mobile
+
+# Install dependencies
+flutter pub get
+
+# For iOS
+cd ios && pod install && cd ..
+
+# Run on iOS simulator
+flutter run -d ios
+
+# Run on Android emulator
+flutter run -d android
+```
+
+### Mobile API Configuration
+
+The mobile app automatically configures the correct API URL based on the platform:
+
+| Platform | API URL |
+|----------|---------|
+| iOS Simulator | `http://localhost:5041` |
+| Android Emulator | `http://10.0.2.2:5041` |
+| Production | Configure in `app_config.dart` |
+
+**Note:** Android emulator uses `10.0.2.2` to access the host machine's localhost.
 
 ## API Endpoints
 

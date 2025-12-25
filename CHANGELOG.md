@@ -5,6 +5,35 @@ All notable changes to GrePre Smart Life will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-12-25
+
+### Added
+
+#### Mobile Application
+- **Flutter Mobile App**: Cross-platform mobile application for iOS and Android
+- Platform-specific API URL configuration (localhost for iOS, 10.0.2.2 for Android emulator)
+- Riverpod state management with code generation
+- GoRouter navigation with deep linking support
+- Dio HTTP client with interceptors for authentication
+- Flutter Secure Storage for token management
+- Firebase Messaging for push notifications
+- Biometric authentication support
+- Dark/Light theme support
+
+#### Mobile Features
+- Dashboard with spending analytics and bill overview
+- Bills management with categories and reminders
+- Documents upload and organization
+- User profile and settings
+- Subscription tier management
+
+### Fixed
+- Mobile app API connection: Updated port configuration from 8000 to 5041 to match backend
+- Android emulator connectivity: Configured 10.0.2.2 for proper localhost routing
+
+### Changed
+- Backend default port changed to 5041 (configurable via WEB_PORT env variable)
+
 ## [2.0.0] - 2024-12-24
 
 ### Added
